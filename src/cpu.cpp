@@ -5,6 +5,7 @@
 #include "miniss/cpu.h"
 #include "miniss/util.h"
 #include "miniss/poller/signal_poller.h"
+#include "miniss/poller/ipc_poller.h"
 
 using namespace std::chrono_literals;
 using namespace miniss;
@@ -24,8 +25,6 @@ void CPU::run()
     init_pollers_();
 
     while (true) {
-        spdlog::info("cpu {} is runninng", cpu_id_);
-
         for (auto& poller: pollers_) {
             poller->poll();
         }
@@ -41,7 +40,7 @@ void CPU::run()
             task_queue_.pop_front();
 
             try {
-                fn();
+                fn->run();
             } catch (...) {
                 spdlog::error("run task failed: {}", current_exception_message());
             }
@@ -62,4 +61,5 @@ void CPU::init_pollers_()
     });
 
     pollers_.push_back(std::move(signal_poller));
+    pollers_.push_back(std::make_unique<Ipc_poller>(cpu_id()));
 }

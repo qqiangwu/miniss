@@ -10,6 +10,7 @@
 #include <chrono>
 #include "miniss/configuration.h"
 #include "miniss/poller.h"
+#include "miniss/task.h"
 #include "miniss/io/timer.h"
 
 namespace miniss {
@@ -20,12 +21,20 @@ public:
 
     void run();
 
-    void schedule(Task&& task)
+    template <class Fn>
+    void schedule(Fn&& task)
     {
-        task_queue_.push_back(std::move(task));
+        schedule(make_task(std::forward<Fn>(task)));
+    }
+
+    void schedule(std::unique_ptr<task> t)
+    {
+        task_queue_.push_back(std::move(t));
     }
 
     void schedule_after(Clock_type::duration interval, Task&& task);
+
+    unsigned cpu_id() const { return cpu_id_; }
 
 private:
     void init_pollers_();
@@ -34,7 +43,7 @@ private:
     int cpu_id_ = 0;
 
     std::atomic<std::uint64_t> pending_signals_ = {};
-    std::deque<Task> task_queue_;
+    std::deque<std::unique_ptr<task>> task_queue_;
     std::vector<std::unique_ptr<Poller>> pollers_;
 
     Timer_service timer_service_;

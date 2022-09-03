@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <cstdlib>
 #include <tuple>
-#include "miniss/cpu.h"
+#include "miniss/task.h"
 
 namespace miniss {
 
@@ -34,29 +34,6 @@ namespace miniss {
 /*
  * Copyright (C) 2015 Cloudius Systems, Ltd.
  */
-
-class task {
-public:
-    virtual ~task() noexcept {}
-    virtual void run() noexcept = 0;
-};
-
-void schedule(std::unique_ptr<task> t);
-void schedule_urgent(std::unique_ptr<task> t);
-
-template <typename Func>
-class lambda_task final : public task {
-    Func _func;
-public:
-    lambda_task(const Func& func) : _func(func) {}
-    lambda_task(Func&& func) : _func(std::move(func)) {}
-    virtual void run() noexcept override { _func(); }
-};
-
-template <typename Func>
-inline std::unique_ptr<task> make_task(Func&& func) {
-    return std::make_unique<lambda_task<Func>>(std::forward<Func>(func));
-}
 
 template<typename T>
 struct function_traits;
@@ -442,46 +419,16 @@ struct future_state<> {
     void forward_to(promise<>& pr) noexcept;
 };
 
-template <typename... T>
-class continuation_base : public Task {
-protected:
-    future_state<T...> _state;
-
-public:
-    continuation_base() = default;
-
-    explicit continuation_base(future_state<T...>&& state) : _state(std::move(state)) {}
-
-    void set_state(std::tuple<T...>&& state) {
-        _state.set(std::move(state));
-    }
-
-    void set_state(future_state<T...>&& state) {
-        _state = std::move(state);
-    }
-
-    friend class promise<T...>;
-    friend class future<T...>;
-};
-
 template <typename Func, typename... T>
-struct continuation final : continuation_base<T...> {
-    continuation(Func&& func, future_state<T...>&& state) : continuation_base<T...>(std::move(state)), _func(std::move(func)) {}
+struct continuation final : task {
+    continuation(Func&& func, future_state<T...>&& state) : _state(std::move(state)), _func(std::move(func)) {}
     continuation(Func&& func) : _func(std::move(func)) {}
-
     virtual void run() noexcept override {
-        _func(std::move(this->_state));
+        _func(std::move(_state));
     }
-
+    future_state<T...> _state;
     Func _func;
 };
-
-namespace internal {
-
-template <typename... T, typename U>
-void set_callback(future<T...>& fut, std::unique_ptr<U> callback);
-
-}
 
 /// \endcond
 
@@ -494,7 +441,7 @@ class promise {
     future<T...>* _future = nullptr;
     future_state<T...> _local_state;
     future_state<T...>* _state;
-    std::unique_ptr<continuation_base<T...>> _task;
+    std::unique_ptr<task> _task;
     static constexpr bool copy_noexcept = future_state<T...>::copy_noexcept;
 public:
     /// \brief Constructs an empty \c promise.
@@ -608,12 +555,8 @@ private:
     template <typename Func>
     void schedule(Func&& func) {
         auto tws = std::make_unique<continuation<Func, T...>>(std::move(func));
-        schedule(std::move(tws));
-    }
-
-    void schedule(std::unique_ptr<continuation_base<T...>> callback) {
-        _state = &callback->_state;
-        _task = std::move(callback);
+        _state = &tws->_state;
+        _task = std::move(tws);
     }
 
     template<urgent Urgent>
@@ -814,10 +757,10 @@ private:
     template <typename Func>
     void schedule(Func&& func) {
         if (state()->available()) {
-            this_cpu()->schedule(std::move(func));
+            miniss::schedule(std::make_unique<continuation<Func, T...>>(std::move(func), std::move(*state())));
         } else {
             assert(_promise);
-            _promise->schedule(std::move(func));
+            _promise->schedule(std::forward<Func>(func));
             _promise->_future = nullptr;
             _promise = nullptr;
         }
@@ -889,7 +832,8 @@ public:
             _promise->_future = nullptr;
         }
         if (failed()) {
-            report_failed_future(state()->get_exception());
+            // @todo
+            std::terminate();
         }
     }
     /// \brief gets the value returned by the computation
@@ -991,7 +935,6 @@ public:
         typename futurator::promise_type pr;
         auto fut = pr.get_future();
         try {
-            memory::disable_failure_guard dfg;
             schedule([pr = std::move(pr), func = std::forward<Func>(func)] (auto&& state) mutable {
                 if (state.failed()) {
                     pr.set_exception(std::move(state).get_exception());
@@ -1144,7 +1087,8 @@ public:
             try {
                 f.get();
             } catch (...) {
-                engine_exit(std::current_exception());
+                // @todo fixme
+                std::terminate();
             }
         });
     }
@@ -1219,21 +1163,6 @@ public:
     }
 
 private:
-    void set_callback(std::unique_ptr<continuation_base<T...>> callback) {
-        if (state()->available()) {
-            callback->set_state(get_available_state());
-            this_cpu()->schedule([task = std::move(callback)]{
-                callback->run();
-            });
-        } else {
-            assert(_promise);
-            _promise->schedule(std::move(callback));
-            _promise->_future = nullptr;
-            _promise = nullptr;
-        }
-
-    }
-
     /// \cond internal
     template <typename... U>
     friend class promise;
@@ -1243,8 +1172,6 @@ private:
     friend future<U...> make_exception_future(std::exception_ptr ex) noexcept;
     template <typename... U, typename Exception>
     friend future<U...> make_exception_future(Exception&& ex) noexcept;
-    template <typename... U, typename V>
-    friend void internal::set_callback(future<U...>&, std::unique_ptr<V>);
     /// \endcond
 };
 
@@ -1275,13 +1202,9 @@ void promise<T...>::make_ready() noexcept {
     if (_task) {
         _state = nullptr;
         if (Urgent == urgent::yes) {
-            this_cpu()->schedule[task = std::move(_task)]{
-                task->run();
-            });
+            miniss::schedule_urgent(std::move(_task));
         } else {
-            this_cpu()->schedule[task = std::move(_task)]{
-                task->run();
-            });
+            miniss::schedule(std::move(_task));
         }
     }
 }
@@ -1303,7 +1226,8 @@ void promise<T...>::abandoned() noexcept {
         _future->_local_state = std::move(*_state);
         _future->_promise = nullptr;
     } else if (_state && _state->failed()) {
-        report_failed_future(_state->get_exception());
+        // @todo
+        std::abort();
     }
 }
 
@@ -1489,19 +1413,6 @@ auto futurize_apply(Func&& func, Args&&... args) {
     using futurator = futurize<std::result_of_t<Func(Args&&...)>>;
     return futurator::apply(std::forward<Func>(func), std::forward<Args>(args)...);
 }
-
-namespace internal {
-
-template <typename... T, typename U>
-inline
-void set_callback(future<T...>& fut, std::unique_ptr<U> callback) {
-    // It would be better to use continuation_base<T...> for U, but
-    // then a derived class of continuation_base<T...> won't be matched
-    return fut.set_callback(std::move(callback));
-}
-
-}
-
 
 /// \endcond
 
