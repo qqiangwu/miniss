@@ -1,4 +1,5 @@
 #include "miniss/cross_cpu_queue.h"
+#include "miniss/cpu.h"
 
 using namespace miniss;
 
@@ -53,12 +54,20 @@ bool Cross_cpu_queue::poll_rx()
 
 void Cross_cpu_queue::submit_(Work_item* item)
 {
-    std::lock_guard _(tx_mut_);
-    tx_.push_back(item);
+    {
+        std::lock_guard _(tx_mut_);
+        tx_.push_back(item);
+    }
+
+    to_.maybe_wakeup();
 }
 
 void Cross_cpu_queue::respond_(Work_item* item)
 {
-    std::lock_guard _(rx_mut_);
-    rx_.push_back(item);
+    {
+        std::lock_guard _(rx_mut_);
+        rx_.push_back(item);
+    }
+
+    from_.maybe_wakeup();
 }
