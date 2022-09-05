@@ -60,15 +60,18 @@ bool OS::poll_queues()
 {
     const auto current_cpu = this_cpu()->cpu_id();
 
-    int n = 0;
+    bool r = false;
     for (size_t i = 0; i < conf_.cpu_count; ++i) {
         if (i == current_cpu) {
             continue;
         }
 
-        n += int(queues_[current_cpu][i].poll_rx());
-        n += int(queues_[i][current_cpu].poll_tx());
+        r |= queues_[current_cpu][i].flush_tx();
+        r |= queues_[current_cpu][i].poll_rx();
+
+        r |= queues_[i][current_cpu].flush_rx();
+        r |= queues_[i][current_cpu].poll_tx();
     }
 
-    return n > 0;
+    return r;
 }

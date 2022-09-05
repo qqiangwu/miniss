@@ -6,6 +6,7 @@
 #include <memory>
 #include <type_traits>
 #include <variant>
+#include <boost/lockfree/spsc_queue.hpp>
 #include "miniss/future.h"
 
 namespace miniss {
@@ -21,6 +22,9 @@ public:
 
     bool poll_tx();
     bool poll_rx();
+
+    bool flush_tx();
+    bool flush_rx();
 
     template <class Fn>
     futurize_t<std::result_of_t<Fn()>> submit(Fn&& fn)
@@ -93,12 +97,19 @@ private:
     CPU& from_;
     CPU& to_;
 
-    // @todo use lockfree queue
-    std::mutex tx_mut_;
-    std::deque<Work_item*> tx_;
+    struct Unbounded_spsc_queue {
+        std::deque<Work_item*> queue_buffer;
+        boost::lockfree::spsc_queue<Work_item*,  boost::lockfree::capacity<1024>> queue;
 
-    std::mutex rx_mut_;
-    std::deque<Work_item*> rx_;
+        bool push(Work_item* item);
+        bool flush();
+
+        template <class Fn>
+        size_t process(Fn&& fn);
+    };
+
+    Unbounded_spsc_queue tx_;
+    Unbounded_spsc_queue rx_;
 };
 
 }

@@ -5,69 +5,97 @@ using namespace miniss;
 
 bool Cross_cpu_queue::poll_tx()
 {
-    auto item = [this]()-> Work_item* {
-        std::lock_guard _(tx_mut_);
-        if (tx_.empty()) {
-            return nullptr;
-        }
+    assert(this_cpu() == &to_);
 
-        auto r = tx_.front();
-        tx_.pop_front();
-
-        return r;
-    }();
-
-    if (!item) {
-        return false;
-    }
-
-    item->process().then([this, item]{
-        respond_(item);
-    });
-
-    return true;
+    return tx_.process([this](Work_item* item){
+        item->process().then([this, item]{
+            respond_(item);
+        });
+    }) > 0;
 }
 
 bool Cross_cpu_queue::poll_rx()
 {
-    auto item = [this]() -> Work_item* {
-        std::lock_guard _(rx_mut_);
-        if (rx_.empty()) {
-            return nullptr;
-        }
+    assert(this_cpu() == &from_);
 
-        auto r = rx_.front();
-        rx_.pop_front();
+    return rx_.process([](Work_item* item){
+        std::unique_ptr<Work_item> p(item);
+        item->complete();
+    }) > 0;
+}
 
-        return r;
-    }();
+bool Cross_cpu_queue::flush_tx()
+{
+    assert(this_cpu() == &from_);
 
-    if (!item) {
-        return false;
+    if (tx_.flush()) {
+        to_.maybe_wakeup();
+        return true;
     }
 
-    std::unique_ptr<Work_item> p(item);
-    item->complete();
+    return false;
+}
 
-    return true;
+bool Cross_cpu_queue::flush_rx()
+{
+    assert(this_cpu() == &to_);
+
+    if (rx_.flush()) {
+        from_.maybe_wakeup();
+        return true;
+    }
+
+    return false;
 }
 
 void Cross_cpu_queue::submit_(Work_item* item)
 {
-    {
-        std::lock_guard _(tx_mut_);
-        tx_.push_back(item);
-    }
+    assert(this_cpu() == &from_);
 
-    to_.maybe_wakeup();
+    if (tx_.push(item)) {
+        to_.maybe_wakeup();
+    }
 }
 
 void Cross_cpu_queue::respond_(Work_item* item)
 {
-    {
-        std::lock_guard _(rx_mut_);
-        rx_.push_back(item);
+    assert(this_cpu() == &to_);
+
+    if (rx_.push(item)) {
+        from_.maybe_wakeup();
+    }
+}
+
+bool Cross_cpu_queue::Unbounded_spsc_queue::push(Work_item* item)
+{
+    queue_buffer.push_back(item);
+    if (queue_buffer.size() < 8) {
+        return false;
     }
 
-    from_.maybe_wakeup();
+    return flush();
+}
+
+bool Cross_cpu_queue::Unbounded_spsc_queue::flush()
+{
+    int n = 0;
+    while (queue.write_available() && !queue_buffer.empty()) {
+        queue.push(queue_buffer.front());
+        queue_buffer.pop_front();
+        ++n;
+    }
+
+    return n > 0;
+}
+
+template <class Fn>
+size_t Cross_cpu_queue::Unbounded_spsc_queue::process(Fn&& fn)
+{
+    Work_item* buf[8];
+
+    const auto nr = queue.pop(buf);
+
+    std::for_each_n(std::begin(buf), nr, fn);
+
+    return nr;
 }

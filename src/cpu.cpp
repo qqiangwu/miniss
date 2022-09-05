@@ -94,7 +94,6 @@ void CPU::init_pollers_()
 void CPU::run_idle_proc_()
 {
     // @fixme atomicty
-
     std::array<epoll_event, 128> eevt;
     int nr = ::epoll_wait(epoll_fd_, eevt.data(), eevt.size(), -1);
     if (nr == -1 && errno == EINTR) {
