@@ -4,9 +4,19 @@
 
 using namespace miniss;
 
-void App::run(Task&& task)
+int App::run(std::function<future<int>()>&& task)
 {
     os()->init(conf_);
-    this_cpu()->schedule(std::move(task));
-    this_cpu()->run();
+
+    this_cpu()->schedule([task = std::move(task)]{
+        futurize_apply(std::move(task)).then_wrapped([](auto&& f){
+            if (f.failed()) {
+                os()->exit(-1);
+            } else {
+                os()->exit(f.get0());
+            }
+        });
+    });
+
+    return this_cpu()->run();
 }

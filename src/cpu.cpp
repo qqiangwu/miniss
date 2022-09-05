@@ -20,7 +20,7 @@ CPU::CPU(const Configuration&, int cpu_id)
 {
 }
 
-void CPU::run()
+int CPU::run()
 {
     init_pollers_();
 
@@ -46,11 +46,13 @@ void CPU::run()
             }
         }
     }
+
+    return 0;
 }
 
-void CPU::schedule_after(Clock_type::duration interval, Task&& task)
+void CPU::schedule_after(Clock_type::duration interval, std::unique_ptr<task> t)
 {
-    timer_service_.add_timer(interval, std::move(task));
+    timer_service_.add_timer(interval, std::move(t));
 }
 
 void CPU::init_pollers_()

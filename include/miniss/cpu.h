@@ -19,7 +19,7 @@ class CPU {
 public:
     CPU(const Configuration& conf, int cpu_id);
 
-    void run();
+    int run();
 
     template <class Fn>
     void schedule(Fn&& task)
@@ -32,7 +32,13 @@ public:
         task_queue_.push_back(std::move(t));
     }
 
-    void schedule_after(Clock_type::duration interval, Task&& task);
+    template <class Fn>
+    void schedule_after(Clock_type::duration interval, Fn&& fn)
+    {
+        schedule_after(interval, make_task(std::forward<Fn>(fn)));
+    }
+
+    void schedule_after(Clock_type::duration interval, std::unique_ptr<task> t);
 
     unsigned cpu_id() const { return cpu_id_; }
 

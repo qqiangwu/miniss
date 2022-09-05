@@ -12,6 +12,6 @@ int main()
     App app(conf);
     app.run([]{
         fmt::print("I am test!\n");
-        os()->exit(0);
+        return make_ready_future<int>();
     });
 }

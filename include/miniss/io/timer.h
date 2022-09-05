@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include "miniss/configuration.h"
+#include "miniss/task.h"
 
 namespace miniss {
 
@@ -16,7 +17,7 @@ public:
 
     ~Timer_service();
 
-    void add_timer(Clock_type::duration, Task&& task);
+    void add_timer(Clock_type::duration, std::unique_ptr<task> t);
     void complete_timers();
 
 private:
@@ -26,7 +27,7 @@ private:
     CPU& cpu_;
 
     timer_t physical_timer_ = {};
-    std::map<Clock_type::time_point, std::vector<Task>> timers_;
+    std::map<Clock_type::time_point, std::vector<std::unique_ptr<task>>> timers_;
 };
 
 }

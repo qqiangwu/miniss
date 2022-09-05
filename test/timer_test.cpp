@@ -18,11 +18,16 @@ int main()
 
     App app(conf);
     app.run([=]{
-        this_cpu()->schedule_after(kInterval, [=]{
+        promise<int> pr;
+        auto fut = pr.get_future();
+
+        this_cpu()->schedule_after(kInterval, [=, pr = std::move(pr)]() mutable {
             const auto end = Clock_type::now();
             fmt::print("time ellapsed: {}\n", duration_cast<milliseconds>(end - started));
 
-            os()->exit(0);
+            pr.set_value(0);
         });
+
+        return fut;
     });
 }

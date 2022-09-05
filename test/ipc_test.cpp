@@ -27,10 +27,9 @@ int main()
             tasks.push_back(std::move(f));
         }
 
-        when_all(std::move(tasks)).then([&](auto&& f){
+        return when_all(std::move(tasks)).then([&](auto&& f){
             fmt::print("done with {}\n", values);
-        }).finally([]{
-            os()->exit(0);
+            return make_ready_future<int>(0);
         });
     });
 }

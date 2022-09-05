@@ -43,11 +43,11 @@ Timer_service::~Timer_service()
     physical_timer_ = {};
 }
 
-void Timer_service::add_timer(Clock_type::duration interval, Task&& task)
+void Timer_service::add_timer(Clock_type::duration interval, std::unique_ptr<task> t)
 {
     const auto new_deadline = Clock_type::now() + interval;
     const auto old_deadline = timers_.empty()? Clock_type::time_point::max(): timers_.begin()->first;
-    timers_[new_deadline].push_back(std::move(task));
+    timers_[new_deadline].push_back(std::move(t));
 
     if (new_deadline < old_deadline) {
         rearm_timer_();

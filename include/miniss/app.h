@@ -1,6 +1,7 @@
 #pragma once
 
 #include "miniss/configuration.h"
+#include "miniss/future.h"
 
 namespace miniss {
 
@@ -10,7 +11,7 @@ public:
     {
     }
 
-    void run(Task&& task);
+    int run(std::function<future<int>()>&& task);
 
 private:
     Configuration conf_;
