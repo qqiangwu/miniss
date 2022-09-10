@@ -65,37 +65,3 @@ void Cross_cpu_queue::respond_(Work_item* item)
         from_.maybe_wakeup();
     }
 }
-
-bool Cross_cpu_queue::Unbounded_spsc_queue::push(Work_item* item)
-{
-    queue_buffer.push_back(item);
-    if (queue_buffer.size() < 8) {
-        return false;
-    }
-
-    return flush();
-}
-
-bool Cross_cpu_queue::Unbounded_spsc_queue::flush()
-{
-    int n = 0;
-    while (queue.write_available() && !queue_buffer.empty()) {
-        queue.push(queue_buffer.front());
-        queue_buffer.pop_front();
-        ++n;
-    }
-
-    return n > 0;
-}
-
-template <class Fn>
-size_t Cross_cpu_queue::Unbounded_spsc_queue::process(Fn&& fn)
-{
-    Work_item* buf[8];
-
-    const auto nr = queue.pop(buf);
-
-    std::for_each_n(std::begin(buf), nr, fn);
-
-    return nr;
-}

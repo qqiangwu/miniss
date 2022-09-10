@@ -3,11 +3,14 @@
 #include <array>
 #include <thread>
 #include <chrono>
+#include <fmt/color.h>
+#include <fmt/std.h>
 #include <spdlog/spdlog.h>
 #include "miniss/cpu.h"
 #include "miniss/util.h"
 #include "miniss/poller/signal_poller.h"
 #include "miniss/poller/ipc_poller.h"
+#include "miniss/poller/syscall_poller.h"
 
 using namespace std::chrono_literals;
 using namespace miniss;
@@ -18,7 +21,7 @@ void miniss::dispatch_signal(int signo, siginfo_t* siginfo, void* ignore)
 }
 
 CPU::CPU(const Configuration&, int cpu_id)
-    : cpu_id_(cpu_id), timer_service_(*this)
+    : cpu_id_(cpu_id), timer_service_(*this), syscall_runner_(*this)
 {
     epoll_fd_ = ::epoll_create1(EPOLL_CLOEXEC);
     throw_system_error_if(epoll_fd_ < 0, "epoll create failed");
@@ -80,6 +83,18 @@ void CPU::schedule_after(Clock_type::duration interval, std::unique_ptr<task> t)
     timer_service_.add_timer(interval, std::move(t));
 }
 
+future<File> CPU::open_file(const std::filesystem::path& p, int open_options)
+{
+    return submit_syscall([p, open_options]{
+        int fd = ::open(p.c_str(), open_options | O_CLOEXEC | O_DIRECT, 0644);
+        throw_system_error_if(fd < 0, fmt::format("open file {} failed", p).c_str());
+
+        return wrap_syscall(fd);
+    }).then([this](auto fd){
+        return File(this, fd);
+    });
+}
+
 void CPU::init_pollers_()
 {
     auto signal_poller = std::make_unique<Signal_poller>(&pending_signals_);
@@ -89,6 +104,7 @@ void CPU::init_pollers_()
 
     pollers_.push_back(std::move(signal_poller));
     pollers_.push_back(std::make_unique<Ipc_poller>(cpu_id()));
+    pollers_.push_back(std::make_unique<Syscall_poller>(syscall_runner_));
 }
 
 void CPU::run_idle_proc_()
