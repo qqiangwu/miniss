@@ -1,7 +1,5 @@
 #pragma once
 
-#include <functional>
-#include <map>
 #include "miniss/poller.h"
 
 namespace miniss {

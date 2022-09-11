@@ -14,6 +14,7 @@ class Eventfd : private boost::noncopyable {
 public:
     Eventfd() : fd_(::eventfd(0, EFD_CLOEXEC))
     {
+        throw_system_error_if(fd_ < 0, "create eventfd failed");
     }
 
     ~Eventfd()
@@ -24,6 +25,11 @@ public:
 
         ::close(fd_);
         fd_ = -1;
+    }
+
+    int get_fd() const
+    {
+        return fd_;
     }
 
     void signal(std::uint64_t count = 1)

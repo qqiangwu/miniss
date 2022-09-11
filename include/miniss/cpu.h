@@ -16,6 +16,7 @@
 #include "miniss/io/syscall.h"
 #include "miniss/io/timer.h"
 #include "miniss/io/file.h"
+#include "miniss/io/file_io.h"
 
 namespace miniss {
 
@@ -81,6 +82,7 @@ private:
 
     Timer_service timer_service_;
     Syscall_runner syscall_runner_;
+    File_io file_io_;
 
 private:
     friend void dispatch_signal(int signo, siginfo_t* siginfo, void* ignore);

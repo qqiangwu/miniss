@@ -5,12 +5,14 @@
 #include <chrono>
 #include <fmt/color.h>
 #include <fmt/std.h>
+#include <scope_guard.hpp>
 #include <spdlog/spdlog.h>
 #include "miniss/cpu.h"
 #include "miniss/util.h"
 #include "miniss/poller/signal_poller.h"
 #include "miniss/poller/ipc_poller.h"
 #include "miniss/poller/syscall_poller.h"
+#include "miniss/poller/file_io_poller.h"
 
 using namespace std::chrono_literals;
 using namespace miniss;
@@ -25,6 +27,13 @@ CPU::CPU(const Configuration&, int cpu_id)
 {
     epoll_fd_ = ::epoll_create1(EPOLL_CLOEXEC);
     throw_system_error_if(epoll_fd_ < 0, "epoll create failed");
+
+    // @todo fixme, epoll is trigger once only
+    ::epoll_event eevt;
+    eevt.events = EPOLLIN;
+    eevt.data.ptr = nullptr;
+    int r = ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, file_io_.get_eventfd(), &eevt);
+    assert(r == 0 && "it won't be wrong unless bug");
 }
 
 CPU::~CPU()
@@ -91,7 +100,7 @@ future<File> CPU::open_file(const std::filesystem::path& p, int open_options)
 
         return wrap_syscall(fd);
     }).then([this](auto fd){
-        return File(this, fd);
+        return File(this, &file_io_, fd);
     });
 }
 
@@ -105,13 +114,27 @@ void CPU::init_pollers_()
     pollers_.push_back(std::move(signal_poller));
     pollers_.push_back(std::make_unique<Ipc_poller>(cpu_id()));
     pollers_.push_back(std::make_unique<Syscall_poller>(syscall_runner_));
+    pollers_.push_back(std::make_unique<File_io_poller>(file_io_));
 }
 
 void CPU::run_idle_proc_()
 {
+    sigset_t mask;
+    sigset_t active_mask;
+    sigemptyset(&mask);
+    sigfillset(&mask);
+    ::pthread_sigmask(SIG_SETMASK, &mask, &active_mask);
+    SCOPE_EXIT {
+        ::pthread_sigmask(SIG_SETMASK, &active_mask, nullptr);
+    };
+
+    if (pending_signals_) {
+        return;
+    }
+
     // @fixme atomicty
     std::array<epoll_event, 128> eevt;
-    int nr = ::epoll_wait(epoll_fd_, eevt.data(), eevt.size(), -1);
+    int nr = ::epoll_pwait(epoll_fd_, eevt.data(), eevt.size(), -1, &active_mask);
     if (nr == -1 && errno == EINTR) {
         /* empty now */
     }

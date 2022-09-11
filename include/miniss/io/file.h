@@ -10,6 +10,7 @@
 namespace miniss {
 
 class CPU;
+class File_io;
 
 class File {
 public:
@@ -18,6 +19,7 @@ public:
     File(File&) = delete;
     File(File&& other) noexcept
         : cpu_(std::exchange(other.cpu_, nullptr)),
+          file_io_(std::exchange(other.file_io_, nullptr)),
           fd_(std::exchange(other.fd_, -1))
     {
     }
@@ -26,6 +28,7 @@ public:
     File& operator=(File&& other) noexcept
     {
         std::swap(cpu_, other.cpu_);
+        std::swap(file_io_, other.file_io_);
         std::swap(fd_, other.fd_);
 
         return *this;
@@ -44,12 +47,13 @@ public:
 private:
     friend CPU;
 
-    File(CPU* cpu, int fd)
-        : cpu_(cpu), fd_(fd)
+    File(CPU* cpu, File_io* io, int fd)
+        : cpu_(cpu), file_io_(io), fd_(fd)
     {}
 
 private:
     CPU* cpu_;
+    File_io* file_io_;
     int fd_ = -1;
 };
 

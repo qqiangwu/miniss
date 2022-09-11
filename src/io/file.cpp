@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 #include "miniss/cpu.h"
 #include "miniss/io/file.h"
+#include "miniss/io/file_io.h"
 
 using namespace miniss;
 
@@ -45,12 +46,14 @@ future<std::uint64_t> File::size() const
 
 future<std::uint64_t> File::dma_write(uint64_t pos, std::span<const std::byte> bytes)
 {
-    std::abort();
+    assert(fd_ >= 0);
+    return file_io_->submit_write(fd_, pos, bytes);
 }
 
 future<std::uint64_t> File::dma_read(uint64_t pos, std::span<std::byte> bytes)
 {
-    std::abort();
+    assert(fd_ >= 0);
+    return file_io_->submit_read(fd_, pos, bytes);
 }
 
 future<> File::flush()
