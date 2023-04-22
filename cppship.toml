@@ -1,0 +1,10 @@
+[package]
+name = "miniss"
+version = "0.1.0"
+std = 20
+
+[dependencies]
+fmt = "9.1.0"
+spdlog = "1.11.0"
+boost = { version = "1.81.0", components = ["headers"], options = { "header_only" = true } }
+scope-lite = "0.2.0"

@@ -1,14 +1,16 @@
 # Introduction
-Top implementation for [Seastar](https://github.com/scylladb/seastar).
+Toy implementation for [Seastar](https://github.com/scylladb/seastar).
 
 I use C++20 and Ubuntu 22.04 for dev and test.
 
 # Build
-Install xmake first and then run the following commands to build
-
-+ xmake f --mode=debug
-+ xmake
+Use [cppship](https://github.com/qqiangwu/cppship) and [conan2](https://conan.io/) for build and tests.
 
 # Run tests
-+ xmake r os_start_test
-+ xmake r timer_test
+```bash
+$ cppship ipc_test
+$ cppship os_start_test
+
+# test all
+$ cppship test
+```

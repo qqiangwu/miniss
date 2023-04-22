@@ -3,7 +3,7 @@
 #include <memory>
 #include <new>
 #include <fmt/core.h>
-#include <scope_guard.hpp>
+#include <nonstd/scope.hpp>
 #include <gtest/gtest.h>
 #include "miniss/io/file_io.h"
 #include "miniss/cpu.h"
@@ -21,9 +21,9 @@ constexpr std::uintmax_t kTestFileSize = 1024 * 16;
 int main()
 {
     const auto p = fs::temp_directory_path() / kTestPath;
-    SCOPE_EXIT {
+    const auto guard = nonstd::make_scope_exit([&] {
         fs::remove(p);
-    };
+    });
 
     fs::remove(p);
 

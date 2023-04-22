@@ -17,7 +17,7 @@ Syscall_runner::~Syscall_runner()
 
 bool Syscall_runner::poll_results()
 {
-    std::array<Work_item*, queue_size> buf;
+    std::array<Work_item*, queue_size> buf {};
 
     const auto nr = result_queue_.pop(buf.data(), buf.size());
     std::for_each_n(buf.begin(), nr, [this](Work_item* work){

@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string_view>
 #include <fmt/core.h>
-#include <scope_guard.hpp>
+#include <nonstd/scope.hpp>
 #include <gtest/gtest.h>
 #include "miniss/cpu.h"
 #include "miniss/app.h"
@@ -22,10 +22,10 @@ int main()
 {
     const auto p1 = fs::temp_directory_path() / kNonExistPath;
     const auto p2 = fs::temp_directory_path() / kTestPath;
-    SCOPE_EXIT {
+    const auto guard = nonstd::make_scope_exit([&] {
         fs::remove(p1);
         fs::remove(p2);
-    };
+    });
 
     fs::remove(p1);
     fs::remove(p2);

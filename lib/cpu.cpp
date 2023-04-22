@@ -1,11 +1,12 @@
 #include <sys/epoll.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <array>
 #include <thread>
 #include <chrono>
 #include <fmt/color.h>
 #include <fmt/std.h>
-#include <scope_guard.hpp>
+#include <nonstd/scope.hpp>
 #include <spdlog/spdlog.h>
 #include "miniss/cpu.h"
 #include "miniss/util.h"
@@ -124,9 +125,9 @@ void CPU::run_idle_proc_()
     sigemptyset(&mask);
     sigfillset(&mask);
     ::pthread_sigmask(SIG_SETMASK, &mask, &active_mask);
-    SCOPE_EXIT {
+    nonstd::scope_exit guard([&]{
         ::pthread_sigmask(SIG_SETMASK, &active_mask, nullptr);
-    };
+    });
 
     if (pending_signals_) {
         return;
