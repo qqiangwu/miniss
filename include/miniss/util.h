@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cerrno>
-#include <type_traits>
 #include <system_error>
+#include <type_traits>
 
 namespace miniss {
 
@@ -20,8 +20,7 @@ inline void throw_system_error_if(const bool expr, const char* what)
     }
 }
 
-template <typename T>
-inline void throw_kernel_error(T r)
+template <typename T> inline void throw_kernel_error(T r)
 {
     static_assert(std::is_signed<T>::value, "kernel error variables must be signed");
     if (r < 0) {

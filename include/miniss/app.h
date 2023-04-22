@@ -7,7 +7,8 @@ namespace miniss {
 
 class App {
 public:
-    explicit App(const Configuration& conf) : conf_(conf)
+    explicit App(const Configuration& conf)
+        : conf_(conf)
     {
     }
 

@@ -1,9 +1,9 @@
 #pragma once
 
+#include "miniss/poller.h"
 #include <atomic>
 #include <functional>
 #include <map>
-#include "miniss/poller.h"
 
 namespace miniss {
 
@@ -13,7 +13,8 @@ public:
 
     explicit Signal_poller(std::atomic_uint64_t* pending_signals)
         : pending_signals_(pending_signals)
-    {}
+    {
+    }
 
     ~Signal_poller() override;
 

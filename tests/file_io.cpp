@@ -1,15 +1,15 @@
+#include "miniss/io/file_io.h"
+#include "miniss/task.h"
+#include <array>
+#include <chrono>
 #include <fcntl.h>
 #include <filesystem>
-#include <vector>
-#include <string_view>
-#include <chrono>
-#include <thread>
-#include <array>
 #include <fmt/core.h>
-#include <nonstd/scope.hpp>
 #include <gtest/gtest.h>
-#include "miniss/task.h"
-#include "miniss/io/file_io.h"
+#include <nonstd/scope.hpp>
+#include <string_view>
+#include <thread>
+#include <vector>
 
 using namespace miniss;
 using namespace std::chrono_literals;
@@ -18,15 +18,9 @@ namespace fs = std::filesystem;
 
 namespace miniss {
 
-__attribute__((weak)) void schedule(std::unique_ptr<task> t)
-{
-    t->run();
-}
+__attribute__((weak)) void schedule(std::unique_ptr<task> t) { t->run(); }
 
-__attribute__((weak)) void schedule_urgent(std::unique_ptr<task> t)
-{
-    t->run();
-}
+__attribute__((weak)) void schedule_urgent(std::unique_ptr<task> t) { t->run(); }
 
 }
 
@@ -36,9 +30,7 @@ constexpr std::uintmax_t kTestFileSize = 1024 * 16;
 int main()
 {
     const auto p = fs::temp_directory_path() / kTestPath;
-    const auto guard = nonstd::make_scope_exit([&]{
-        fs::remove(p);
-    });
+    const auto guard = nonstd::make_scope_exit([&] { fs::remove(p); });
 
     fs::remove(p);
 
@@ -49,24 +41,28 @@ int main()
 
     alignas(512) std::array<std::byte, kTestFileSize> buf;
     alignas(512) std::array<std::byte, kTestFileSize> buf2;
-    auto f = fio.submit_read(fd, 0, buf).then_wrapped([](auto&& f){
-        EXPECT_TRUE(!f.failed());
-        EXPECT_EQ(f.get0(), 0);
-    }).then([&]{
-        std::fill(buf.begin(), buf.end(), std::byte{'x'});
+    auto f = fio.submit_read(fd, 0, buf)
+                 .then_wrapped([](auto&& f) {
+                     EXPECT_TRUE(!f.failed());
+                     EXPECT_EQ(f.get0(), 0);
+                 })
+                 .then([&] {
+                     std::fill(buf.begin(), buf.end(), std::byte { 'x' });
 
-        return fio.submit_write(fd, 0, buf);
-    }).then_wrapped([&](auto&& f){
-        EXPECT_TRUE(!f.failed());
-        EXPECT_EQ(f.get0(), kTestFileSize);
+                     return fio.submit_write(fd, 0, buf);
+                 })
+                 .then_wrapped([&](auto&& f) {
+                     EXPECT_TRUE(!f.failed());
+                     EXPECT_EQ(f.get0(), kTestFileSize);
 
-        return fio.submit_read(fd, 0, buf2);
-    }).then_wrapped([&](auto&& f){
-        EXPECT_TRUE(!f.failed());
-        EXPECT_EQ(f.get0(), kTestFileSize);
+                     return fio.submit_read(fd, 0, buf2);
+                 })
+                 .then_wrapped([&](auto&& f) {
+                     EXPECT_TRUE(!f.failed());
+                     EXPECT_EQ(f.get0(), kTestFileSize);
 
-        EXPECT_EQ(buf, buf2);
-    });
+                     EXPECT_EQ(buf, buf2);
+                 });
 
     using namespace std::chrono_literals;
     const auto deadline = std::chrono::system_clock::now() + 10s;

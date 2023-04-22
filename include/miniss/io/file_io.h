@@ -1,14 +1,14 @@
 #pragma once
 
-#include <linux/aio_abi.h>
-#include <unistd.h>
-#include <cstddef>
-#include <cstdint>
-#include <span>
-#include <boost/noncopyable.hpp>
 #include "miniss/future.h"
 #include "miniss/util/eventfd.h"
 #include "miniss/util/semaphore.h"
+#include <boost/noncopyable.hpp>
+#include <cstddef>
+#include <cstdint>
+#include <linux/aio_abi.h>
+#include <span>
+#include <unistd.h>
 
 namespace miniss {
 
@@ -25,10 +25,7 @@ public:
     // called by poller to reap io
     bool reap_io();
 
-    int get_eventfd() const
-    {
-        return aio_eventfd_.get_fd();
-    }
+    int get_eventfd() const { return aio_eventfd_.get_fd(); }
 
 private:
     future<io_event> submit_io_(iocb io);

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <sys/stat.h>
-#include <cstdint>
-#include <cstddef>
-#include <span>
-#include <utility>
 #include "miniss/future.h"
+#include <cstddef>
+#include <cstdint>
+#include <span>
+#include <sys/stat.h>
+#include <utility>
 
 namespace miniss {
 
@@ -18,9 +18,9 @@ public:
 
     File(File&) = delete;
     File(File&& other) noexcept
-        : cpu_(std::exchange(other.cpu_, nullptr)),
-          file_io_(std::exchange(other.file_io_, nullptr)),
-          fd_(std::exchange(other.fd_, -1))
+        : cpu_(std::exchange(other.cpu_, nullptr))
+        , file_io_(std::exchange(other.file_io_, nullptr))
+        , fd_(std::exchange(other.fd_, -1))
     {
     }
 
@@ -48,8 +48,11 @@ private:
     friend CPU;
 
     File(CPU* cpu, File_io* io, int fd)
-        : cpu_(cpu), file_io_(io), fd_(fd)
-    {}
+        : cpu_(cpu)
+        , file_io_(io)
+        , fd_(fd)
+    {
+    }
 
 private:
     CPU* cpu_;

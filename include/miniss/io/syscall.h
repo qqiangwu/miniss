@@ -1,20 +1,19 @@
 #pragma once
 
+#include "miniss/future.h"
+#include "miniss/util/eventfd.h"
+#include "miniss/util/semaphore.h"
+#include <boost/lockfree/spsc_queue.hpp>
+#include <boost/noncopyable.hpp>
+#include <memory>
 #include <system_error>
 #include <thread>
-#include <memory>
 #include <type_traits>
 #include <variant>
-#include <boost/noncopyable.hpp>
-#include <boost/lockfree/spsc_queue.hpp>
-#include "miniss/future.h"
-#include "miniss/util/semaphore.h"
-#include "miniss/util/eventfd.h"
 
 namespace miniss {
 
-template <typename Extra>
-struct syscall_result {
+template <typename Extra> struct syscall_result {
     int error;
     Extra extra;
 
@@ -26,8 +25,7 @@ struct syscall_result {
     }
 };
 
-template <typename Extra>
-inline syscall_result<Extra> wrap_syscall(const Extra& extra)
+template <typename Extra> inline syscall_result<Extra> wrap_syscall(const Extra& extra)
 {
     syscall_result<Extra> r;
 
@@ -37,12 +35,11 @@ inline syscall_result<Extra> wrap_syscall(const Extra& extra)
     return r;
 }
 
-template <typename Extra>
-inline syscall_result<Extra> wrap_syscall(int result, const Extra& extra)
+template <typename Extra> inline syscall_result<Extra> wrap_syscall(int result, const Extra& extra)
 {
     syscall_result<Extra> r;
 
-    r.error = result < 0? errno: 0;
+    r.error = result < 0 ? errno : 0;
     r.extra = extra;
 
     return r;
@@ -50,27 +47,29 @@ inline syscall_result<Extra> wrap_syscall(int result, const Extra& extra)
 
 // @fixme predicate on T is syscall_result<E> is somehow hard
 template <class T>
-concept IsSyscallResult = requires(T t) {
-    { t.error } -> std::convertible_to<int>;
+concept IsSyscallResult = requires(T t)
+{
+    {
+        t.error
+        } -> std::convertible_to<int>;
     { t.extra };
     { t.throw_if_error() };
-} || std::is_same_v<T, int>;
+}
+|| std::is_same_v<T, int>;
 
 class CPU;
 
 namespace detail {
 
-template <class T>
-struct Result_selector {
-    using value_type = decltype(T().extra);
-    using result_holder = std::variant<std::monostate, value_type, std::exception_ptr>;
-};
+    template <class T> struct Result_selector {
+        using value_type = decltype(T().extra);
+        using result_holder = std::variant<std::monostate, value_type, std::exception_ptr>;
+    };
 
-template <>
-struct Result_selector<int> {
-    using value_type = void;
-    using result_holder = std::variant<std::monostate, std::exception_ptr>;
-};
+    template <> struct Result_selector<int> {
+        using value_type = void;
+        using result_holder = std::variant<std::monostate, std::exception_ptr>;
+    };
 
 }
 
@@ -83,8 +82,7 @@ class Syscall_runner : private boost::noncopyable {
         virtual void complete() = 0;
     };
 
-    template <class Fn>
-    struct Syscall_work_item final : public Work_item {
+    template <class Fn> struct Syscall_work_item final : public Work_item {
         using result_type = std::result_of_t<Fn()>;
         using result_selector = detail::Result_selector<result_type>;
         using value_type = typename result_selector::value_type;
@@ -96,7 +94,8 @@ class Syscall_runner : private boost::noncopyable {
         result_holder ret_;
         promise<value_type> promise_;
 
-        explicit Syscall_work_item(Fn&& fn): fn_(std::move(fn))
+        explicit Syscall_work_item(Fn&& fn)
+            : fn_(std::move(fn))
         {
         }
 
@@ -157,7 +156,7 @@ public:
     ~Syscall_runner();
 
     template <class Fn>
-        requires IsSyscallResult<std::result_of_t<Fn()>>
+    requires IsSyscallResult<std::result_of_t<Fn()>>
     auto submit(Fn&& fn)
     {
         auto task = std::make_unique<Syscall_work_item<Fn>>(std::forward<Fn>(fn));

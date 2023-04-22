@@ -1,10 +1,10 @@
 #pragma once
 
-#include <sys/eventfd.h>
-#include <cstdint>
-#include <system_error>
-#include <boost/noncopyable.hpp>
 #include "miniss/util.h"
+#include <boost/noncopyable.hpp>
+#include <cstdint>
+#include <sys/eventfd.h>
+#include <system_error>
 
 namespace miniss {
 
@@ -12,7 +12,8 @@ class Eventfd : private boost::noncopyable {
     int fd_;
 
 public:
-    Eventfd() : fd_(::eventfd(0, EFD_CLOEXEC))
+    Eventfd()
+        : fd_(::eventfd(0, EFD_CLOEXEC))
     {
         throw_system_error_if(fd_ < 0, "create eventfd failed");
     }
@@ -27,10 +28,7 @@ public:
         fd_ = -1;
     }
 
-    int get_fd() const
-    {
-        return fd_;
-    }
+    int get_fd() const { return fd_; }
 
     void signal(std::uint64_t count = 1)
     {

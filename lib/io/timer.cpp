@@ -1,9 +1,9 @@
+#include "miniss/io/timer.h"
+#include "miniss/cpu.h"
+#include "miniss/util.h"
 #include <algorithm>
 #include <cassert>
 #include <spdlog/spdlog.h>
-#include "miniss/cpu.h"
-#include "miniss/util.h"
-#include "miniss/io/timer.h"
 
 using namespace miniss;
 
@@ -46,7 +46,7 @@ Timer_service::~Timer_service()
 void Timer_service::add_timer(Clock_type::duration interval, std::unique_ptr<task> t)
 {
     const auto new_deadline = Clock_type::now() + interval;
-    const auto old_deadline = timers_.empty()? Clock_type::time_point::max(): timers_.begin()->first;
+    const auto old_deadline = timers_.empty() ? Clock_type::time_point::max() : timers_.begin()->first;
     timers_[new_deadline].push_back(std::move(t));
 
     if (new_deadline < old_deadline) {
@@ -62,8 +62,8 @@ void Timer_service::complete_timers()
     assert(ub == timers_.end() || ub->first > now);
 
     // @fixme error handle here
-    std::for_each(timers_.begin(), ub, [cpu = &cpu_](auto& kv){
-        for (auto& task: kv.second) {
+    std::for_each(timers_.begin(), ub, [cpu = &cpu_](auto& kv) {
+        for (auto& task : kv.second) {
             cpu->schedule(std::move(task));
         }
     });

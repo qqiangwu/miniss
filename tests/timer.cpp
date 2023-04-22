@@ -1,8 +1,8 @@
-#include <chrono>
-#include <fmt/core.h>
-#include <fmt/chrono.h>
-#include "miniss/os.h"
 #include "miniss/app.h"
+#include "miniss/os.h"
+#include <chrono>
+#include <fmt/chrono.h>
+#include <fmt/core.h>
 
 using namespace miniss;
 using namespace std::chrono;
@@ -17,7 +17,7 @@ int main()
     const auto started = Clock_type::now();
 
     App app(conf);
-    app.run([=]{
+    app.run([=] {
         promise<int> pr;
         auto fut = pr.get_future();
 

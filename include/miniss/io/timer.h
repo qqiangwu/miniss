@@ -1,11 +1,11 @@
 #pragma once
 
-#include <time.h>
-#include <chrono>
-#include <map>
-#include <vector>
 #include "miniss/configuration.h"
 #include "miniss/task.h"
+#include <chrono>
+#include <map>
+#include <time.h>
+#include <vector>
 
 namespace miniss {
 

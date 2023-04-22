@@ -3,15 +3,15 @@
 #define GCC6_CONCEPT(x...)
 #define GCC6_NO_CONCEPT(x...) x
 
-#include <stdexcept>
-#include <atomic>
-#include <memory>
-#include <type_traits>
-#include <assert.h>
-#include <cstdlib>
-#include <tuple>
-#include "miniss/task.h"
 #include "miniss/seastar/apply.h"
+#include "miniss/task.h"
+#include <assert.h>
+#include <atomic>
+#include <cstdlib>
+#include <memory>
+#include <stdexcept>
+#include <tuple>
+#include <type_traits>
 
 /*
  * This file is open source software, licensed to you under the terms
@@ -34,45 +34,38 @@
  * Copyright (C) 2015 Cloudius Systems, Ltd.
  */
 
-template<typename T>
-struct function_traits;
+template <typename T> struct function_traits;
 
-template<typename Ret, typename... Args>
-struct function_traits<Ret(Args...)>
-{
+template <typename Ret, typename... Args> struct function_traits<Ret(Args...)> {
     using return_type = Ret;
     using args_as_tuple = std::tuple<Args...>;
-    using signature = Ret (Args...);
+    using signature = Ret(Args...);
 
     static constexpr std::size_t arity = sizeof...(Args);
 
-    template <std::size_t N>
-    struct arg
-    {
+    template <std::size_t N> struct arg {
         static_assert(N < arity, "no such parameter index.");
         using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
     };
 };
 
-template<typename Ret, typename... Args>
-struct function_traits<Ret(*)(Args...)> : public function_traits<Ret(Args...)>
-{};
+template <typename Ret, typename... Args>
+struct function_traits<Ret (*)(Args...)> : public function_traits<Ret(Args...)> {
+};
 
 template <typename T, typename Ret, typename... Args>
-struct function_traits<Ret(T::*)(Args...)> : public function_traits<Ret(Args...)>
-{};
+struct function_traits<Ret (T::*)(Args...)> : public function_traits<Ret(Args...)> {
+};
 
 template <typename T, typename Ret, typename... Args>
-struct function_traits<Ret(T::*)(Args...) const> : public function_traits<Ret(Args...)>
-{};
+struct function_traits<Ret (T::*)(Args...) const> : public function_traits<Ret(Args...)> {
+};
 
-template <typename T>
-struct function_traits : public function_traits<decltype(&T::operator())>
-{};
+template <typename T> struct function_traits : public function_traits<decltype(&T::operator())> {
+};
 
-template<typename T>
-struct function_traits<T&> : public function_traits<std::remove_reference_t<T>>
-{};
+template <typename T> struct function_traits<T&> : public function_traits<std::remove_reference_t<T>> {
+};
 
 /// \defgroup future-module Futures and Promises
 ///
@@ -103,15 +96,12 @@ struct function_traits<T&> : public function_traits<std::remove_reference_t<T>>
 /// \brief
 /// These utilities are provided to help perform operations on futures.
 
-
 /// \addtogroup future-module
 /// @{
 
-template <class... T>
-class promise;
+template <class... T> class promise;
 
-template <class... T>
-class future;
+template <class... T> class future;
 
 /// \brief Creates a \ref future in an available, value state.
 ///
@@ -119,8 +109,7 @@ class future;
 /// is useful when it is determined that no I/O needs to be performed
 /// to perform a computation (for example, because the data is cached
 /// in some buffer).
-template <typename... T, typename... A>
-future<T...> make_ready_future(A&&... value);
+template <typename... T, typename... A> future<T...> make_ready_future(A&&... value);
 
 /// \brief Creates a \ref future in an available, failed state.
 ///
@@ -128,8 +117,7 @@ future<T...> make_ready_future(A&&... value);
 /// state.  This is useful when no I/O needs to be performed to perform
 /// a computation (for example, because the connection is closed and
 /// we cannot read from it).
-template <typename... T>
-future<T...> make_exception_future(std::exception_ptr value) noexcept;
+template <typename... T> future<T...> make_exception_future(std::exception_ptr value) noexcept;
 
 /// \cond internal
 inline void engine_exit(std::exception_ptr eptr = {}) { std::abort(); }
@@ -158,33 +146,32 @@ inline bool need_preempt() { return true; }
 //
 
 /// \cond internal
-template <typename... T>
-struct future_state {
+template <typename... T> struct future_state {
     static constexpr bool copy_noexcept = std::is_nothrow_copy_constructible<std::tuple<T...>>::value;
-    static_assert(std::is_nothrow_move_constructible<std::tuple<T...>>::value,
-                  "Types must be no-throw move constructible");
-    static_assert(std::is_nothrow_destructible<std::tuple<T...>>::value,
-                  "Types must be no-throw destructible");
+    static_assert(
+        std::is_nothrow_move_constructible<std::tuple<T...>>::value, "Types must be no-throw move constructible");
+    static_assert(std::is_nothrow_destructible<std::tuple<T...>>::value, "Types must be no-throw destructible");
     static_assert(std::is_nothrow_copy_constructible<std::exception_ptr>::value,
-                  "std::exception_ptr's copy constructor must not throw");
+        "std::exception_ptr's copy constructor must not throw");
     static_assert(std::is_nothrow_move_constructible<std::exception_ptr>::value,
-                  "std::exception_ptr's move constructor must not throw");
+        "std::exception_ptr's move constructor must not throw");
     enum class state {
-         invalid,
-         future,
-         result,
-         exception,
-    } _state = state::future;
+        invalid,
+        future,
+        result,
+        exception,
+    } _state
+        = state::future;
     union any {
-        any() {}
-        ~any() {}
+        any() { }
+        ~any() { }
         std::tuple<T...> value;
         std::exception_ptr ex;
     } _u;
-    future_state() noexcept {}
-    [[gnu::always_inline]]
-    future_state(future_state&& x) noexcept
-            : _state(x._state) {
+    future_state() noexcept { }
+    [[gnu::always_inline]] future_state(future_state&& x) noexcept
+        : _state(x._state)
+    {
         switch (_state) {
         case state::future:
             break;
@@ -203,8 +190,8 @@ struct future_state {
         }
         x._state = state::invalid;
     }
-    __attribute__((always_inline))
-    ~future_state() noexcept {
+    __attribute__((always_inline)) ~future_state() noexcept
+    {
         switch (_state) {
         case state::invalid:
             break;
@@ -220,7 +207,8 @@ struct future_state {
             abort();
         }
     }
-    future_state& operator=(future_state&& x) noexcept {
+    future_state& operator=(future_state&& x) noexcept
+    {
         if (this != &x) {
             this->~future_state();
             new (this) future_state(std::move(x));
@@ -230,28 +218,32 @@ struct future_state {
     bool available() const noexcept { return _state == state::result || _state == state::exception; }
     bool failed() const noexcept { return _state == state::exception; }
     void wait();
-    void set(const std::tuple<T...>& value) noexcept {
+    void set(const std::tuple<T...>& value) noexcept
+    {
         assert(_state == state::future);
         new (&_u.value) std::tuple<T...>(value);
         _state = state::result;
     }
-    void set(std::tuple<T...>&& value) noexcept {
+    void set(std::tuple<T...>&& value) noexcept
+    {
         assert(_state == state::future);
         new (&_u.value) std::tuple<T...>(std::move(value));
         _state = state::result;
     }
-    template <typename... A>
-    void set(A&&... a) {
+    template <typename... A> void set(A&&... a)
+    {
         assert(_state == state::future);
         new (&_u.value) std::tuple<T...>(std::forward<A>(a)...);
         _state = state::result;
     }
-    void set_exception(std::exception_ptr ex) noexcept {
+    void set_exception(std::exception_ptr ex) noexcept
+    {
         assert(_state == state::future);
         new (&_u.ex) std::exception_ptr(ex);
         _state = state::exception;
     }
-    std::exception_ptr get_exception() && noexcept {
+    std::exception_ptr get_exception() && noexcept
+    {
         assert(_state == state::exception);
         // Move ex out so future::~future() knows we've handled it
         _state = state::invalid;
@@ -259,20 +251,24 @@ struct future_state {
         _u.ex.~exception_ptr();
         return ex;
     }
-    std::exception_ptr get_exception() const& noexcept {
+    std::exception_ptr get_exception() const& noexcept
+    {
         assert(_state == state::exception);
         return _u.ex;
     }
-    std::tuple<T...> get_value() && noexcept {
+    std::tuple<T...> get_value() && noexcept
+    {
         assert(_state == state::result);
         return std::move(_u.value);
     }
-    template<typename U = std::tuple<T...>>
-    std::enable_if_t<std::is_copy_constructible<U>::value, U> get_value() const& noexcept(copy_noexcept) {
+    template <typename U = std::tuple<T...>>
+    std::enable_if_t<std::is_copy_constructible<U>::value, U> get_value() const& noexcept(copy_noexcept)
+    {
         assert(_state == state::result);
         return _u.value;
     }
-    std::tuple<T...> get() && {
+    std::tuple<T...> get() &&
+    {
         assert(_state != state::future);
         if (_state == state::exception) {
             _state = state::invalid;
@@ -283,23 +279,24 @@ struct future_state {
         }
         return std::move(_u.value);
     }
-    std::tuple<T...> get() const& {
+    std::tuple<T...> get() const&
+    {
         assert(_state != state::future);
         if (_state == state::exception) {
             std::rethrow_exception(_u.ex);
         }
         return _u.value;
     }
-    void ignore() noexcept {
+    void ignore() noexcept
+    {
         assert(_state != state::future);
         this->~future_state();
         _state = state::invalid;
     }
     using get0_return_type = std::tuple_element_t<0, std::tuple<T...>>;
-    static get0_return_type get0(std::tuple<T...>&& x) {
-        return std::get<0>(std::move(x));
-    }
-    void forward_to(promise<T...>& pr) noexcept {
+    static get0_return_type get0(std::tuple<T...>&& x) { return std::get<0>(std::move(x)); }
+    void forward_to(promise<T...>& pr) noexcept
+    {
         assert(_state != state::future);
         if (_state == state::exception) {
             pr.set_urgent_exception(std::move(_u.ex));
@@ -316,29 +313,28 @@ struct future_state {
 // is no value to hold.
 //
 // Assumes std::exception_ptr is really a pointer.
-template <>
-struct future_state<> {
+template <> struct future_state<> {
     static_assert(sizeof(std::exception_ptr) == sizeof(void*), "exception_ptr not a pointer");
     static_assert(std::is_nothrow_copy_constructible<std::exception_ptr>::value,
-                  "std::exception_ptr's copy constructor must not throw");
+        "std::exception_ptr's copy constructor must not throw");
     static_assert(std::is_nothrow_move_constructible<std::exception_ptr>::value,
-                  "std::exception_ptr's move constructor must not throw");
+        "std::exception_ptr's move constructor must not throw");
     static constexpr bool copy_noexcept = true;
     enum class state : uintptr_t {
-         invalid = 0,
-         future = 1,
-         result = 2,
-         exception_min = 3,  // or anything greater
+        invalid = 0,
+        future = 1,
+        result = 2,
+        exception_min = 3, // or anything greater
     };
     union any {
         any() { st = state::future; }
-        ~any() {}
+        ~any() { }
         state st;
         std::exception_ptr ex;
     } _u;
-    future_state() noexcept {}
-    [[gnu::always_inline]]
-    future_state(future_state&& x) noexcept {
+    future_state() noexcept { }
+    [[gnu::always_inline]] future_state(future_state&& x) noexcept
+    {
         if (x._u.st < state::exception_min) {
             _u.st = x._u.st;
         } else {
@@ -349,13 +345,14 @@ struct future_state<> {
         }
         x._u.st = state::invalid;
     }
-    [[gnu::always_inline]]
-    ~future_state() noexcept {
+    [[gnu::always_inline]] ~future_state() noexcept
+    {
         if (_u.st >= state::exception_min) {
             _u.ex.~exception_ptr();
         }
     }
-    future_state& operator=(future_state&& x) noexcept {
+    future_state& operator=(future_state&& x) noexcept
+    {
         if (this != &x) {
             this->~future_state();
             new (this) future_state(std::move(x));
@@ -364,24 +361,29 @@ struct future_state<> {
     }
     bool available() const noexcept { return _u.st == state::result || _u.st >= state::exception_min; }
     bool failed() const noexcept { return _u.st >= state::exception_min; }
-    void set(const std::tuple<>& value) noexcept {
+    void set(const std::tuple<>& value) noexcept
+    {
         assert(_u.st == state::future);
         _u.st = state::result;
     }
-    void set(std::tuple<>&& value) noexcept {
+    void set(std::tuple<>&& value) noexcept
+    {
         assert(_u.st == state::future);
         _u.st = state::result;
     }
-    void set() {
+    void set()
+    {
         assert(_u.st == state::future);
         _u.st = state::result;
     }
-    void set_exception(std::exception_ptr ex) noexcept {
+    void set_exception(std::exception_ptr ex) noexcept
+    {
         assert(_u.st == state::future);
         new (&_u.ex) std::exception_ptr(ex);
         assert(_u.st >= state::exception_min);
     }
-    std::tuple<> get() && {
+    std::tuple<> get() &&
+    {
         assert(_u.st != state::future);
         if (_u.st >= state::exception_min) {
             // Move ex out so future::~future() knows we've handled it
@@ -390,46 +392,53 @@ struct future_state<> {
         }
         return {};
     }
-    std::tuple<> get() const& {
+    std::tuple<> get() const&
+    {
         assert(_u.st != state::future);
         if (_u.st >= state::exception_min) {
             std::rethrow_exception(_u.ex);
         }
         return {};
     }
-    void ignore() noexcept {
+    void ignore() noexcept
+    {
         assert(_u.st != state::future);
         this->~future_state();
         _u.st = state::invalid;
     }
     using get0_return_type = void;
-    static get0_return_type get0(std::tuple<>&&) {
-        return;
-    }
-    std::exception_ptr get_exception() && noexcept {
+    static get0_return_type get0(std::tuple<>&&) { return; }
+    std::exception_ptr get_exception() && noexcept
+    {
         assert(_u.st >= state::exception_min);
         // Move ex out so future::~future() knows we've handled it
         // Moving it will reset us to invalid state
         return std::move(_u.ex);
     }
-    std::exception_ptr get_exception() const& noexcept {
+    std::exception_ptr get_exception() const& noexcept
+    {
         assert(_u.st >= state::exception_min);
         return _u.ex;
     }
-    std::tuple<> get_value() const noexcept {
+    std::tuple<> get_value() const noexcept
+    {
         assert(_u.st == state::result);
         return {};
     }
     void forward_to(promise<>& pr) noexcept;
 };
 
-template <typename Func, typename... T>
-struct continuation final : miniss::task {
-    continuation(Func&& func, future_state<T...>&& state) : _state(std::move(state)), _func(std::move(func)) {}
-    continuation(Func&& func) : _func(std::move(func)) {}
-    virtual void run() noexcept override {
-        _func(std::move(_state));
+template <typename Func, typename... T> struct continuation final : miniss::task {
+    continuation(Func&& func, future_state<T...>&& state)
+        : _state(std::move(state))
+        , _func(std::move(func))
+    {
     }
+    continuation(Func&& func)
+        : _func(std::move(func))
+    {
+    }
+    virtual void run() noexcept override { _func(std::move(_state)); }
     future_state<T...> _state;
     Func _func;
 };
@@ -439,22 +448,29 @@ struct continuation final : miniss::task {
 /// \brief promise - allows a future value to be made available at a later time.
 ///
 ///
-template <typename... T>
-class promise {
+template <typename... T> class promise {
     enum class urgent { no, yes };
     future<T...>* _future = nullptr;
     future_state<T...> _local_state;
     future_state<T...>* _state;
     std::unique_ptr<miniss::task> _task;
     static constexpr bool copy_noexcept = future_state<T...>::copy_noexcept;
+
 public:
     /// \brief Constructs an empty \c promise.
     ///
     /// Creates promise with no associated future yet (see get_future()).
-    promise() noexcept : _state(&_local_state) {}
+    promise() noexcept
+        : _state(&_local_state)
+    {
+    }
 
     /// \brief Moves a \c promise object.
-    promise(promise&& x) noexcept : _future(x._future), _state(x._state), _task(std::move(x._task)) {
+    promise(promise&& x) noexcept
+        : _future(x._future)
+        , _state(x._state)
+        , _task(std::move(x._task))
+    {
         if (_state == &x._local_state) {
             _state = &_local_state;
             _local_state = std::move(x._local_state);
@@ -464,11 +480,9 @@ public:
         migrated();
     }
     promise(const promise&) = delete;
-    __attribute__((always_inline))
-    ~promise() noexcept {
-        abandoned();
-    }
-    promise& operator=(promise&& x) noexcept {
+    __attribute__((always_inline)) ~promise() noexcept { abandoned(); }
+    promise& operator=(promise&& x) noexcept
+    {
         if (this != &x) {
             this->~promise();
             new (this) promise(std::move(x));
@@ -489,24 +503,20 @@ public:
     ///
     /// Copies the tuple argument and makes it available to the associated
     /// future.  May be called either before or after \c get_future().
-    void set_value(const std::tuple<T...>& result) noexcept(copy_noexcept) {
-        do_set_value<urgent::no>(result);
-    }
+    void set_value(const std::tuple<T...>& result) noexcept(copy_noexcept) { do_set_value<urgent::no>(result); }
 
     /// \brief Sets the promises value (as tuple; by moving)
     ///
     /// Moves the tuple argument and makes it available to the associated
     /// future.  May be called either before or after \c get_future().
-    void set_value(std::tuple<T...>&& result) noexcept {
-        do_set_value<urgent::no>(std::move(result));
-    }
+    void set_value(std::tuple<T...>&& result) noexcept { do_set_value<urgent::no>(std::move(result)); }
 
     /// \brief Sets the promises value (variadic)
     ///
     /// Forwards the arguments and makes them available to the associated
     /// future.  May be called either before or after \c get_future().
-    template <typename... A>
-    void set_value(A&&... a) noexcept {
+    template <typename... A> void set_value(A&&... a) noexcept
+    {
         assert(_state);
         _state->set(std::forward<A>(a)...);
         make_ready<urgent::no>();
@@ -516,59 +526,50 @@ public:
     ///
     /// Forwards the exception argument to the future and makes it
     /// available.  May be called either before or after \c get_future().
-    void set_exception(std::exception_ptr ex) noexcept {
-        do_set_exception<urgent::no>(std::move(ex));
-    }
+    void set_exception(std::exception_ptr ex) noexcept { do_set_exception<urgent::no>(std::move(ex)); }
 
     /// \brief Marks the promise as failed
     ///
     /// Forwards the exception argument to the future and makes it
     /// available.  May be called either before or after \c get_future().
-    template<typename Exception>
-    void set_exception(Exception&& e) noexcept {
+    template <typename Exception> void set_exception(Exception&& e) noexcept
+    {
         set_exception(make_exception_ptr(std::forward<Exception>(e)));
     }
+
 private:
-    template<urgent Urgent>
-    void do_set_value(std::tuple<T...> result) noexcept {
+    template <urgent Urgent> void do_set_value(std::tuple<T...> result) noexcept
+    {
         assert(_state);
         _state->set(std::move(result));
         make_ready<Urgent>();
     }
 
-    void set_urgent_value(const std::tuple<T...>& result) noexcept(copy_noexcept) {
-        do_set_value<urgent::yes>(result);
-    }
+    void set_urgent_value(const std::tuple<T...>& result) noexcept(copy_noexcept) { do_set_value<urgent::yes>(result); }
 
-    void set_urgent_value(std::tuple<T...>&& result) noexcept {
-        do_set_value<urgent::yes>(std::move(result));
-    }
+    void set_urgent_value(std::tuple<T...>&& result) noexcept { do_set_value<urgent::yes>(std::move(result)); }
 
-    template<urgent Urgent>
-    void do_set_exception(std::exception_ptr ex) noexcept {
+    template <urgent Urgent> void do_set_exception(std::exception_ptr ex) noexcept
+    {
         assert(_state);
         _state->set_exception(std::move(ex));
         make_ready<Urgent>();
     }
 
-    void set_urgent_exception(std::exception_ptr ex) noexcept {
-        do_set_exception<urgent::yes>(std::move(ex));
-    }
+    void set_urgent_exception(std::exception_ptr ex) noexcept { do_set_exception<urgent::yes>(std::move(ex)); }
+
 private:
-    template <typename Func>
-    void schedule(Func&& func) {
+    template <typename Func> void schedule(Func&& func)
+    {
         auto tws = std::make_unique<continuation<Func, T...>>(std::move(func));
         _state = &tws->_state;
         _task = std::move(tws);
     }
-    template<urgent Urgent>
-    __attribute__((always_inline))
-    void make_ready() noexcept;
+    template <urgent Urgent> __attribute__((always_inline)) void make_ready() noexcept;
     void migrated() noexcept;
     void abandoned() noexcept;
 
-    template <typename... U>
-    friend class future;
+    template <typename... U> friend class future;
 
     friend class future_state<T...>;
 };
@@ -578,41 +579,39 @@ private:
 /// This is an alias for \c promise<>, for generic programming purposes.
 /// For example, You may have a \c promise<T> where \c T can legally be
 /// \c void.
-template<>
-class promise<void> : public promise<> {};
+template <> class promise<void> : public promise<> {
+};
 
 /// @}
 
 /// \addtogroup future-util
 /// @{
 
-
 /// \brief Check whether a type is a future
 ///
 /// This is a type trait evaluating to \c true if the given type is a
 /// future.
 ///
-template <typename... T> struct is_future : std::false_type {};
+template <typename... T> struct is_future : std::false_type {
+};
 
 /// \cond internal
 /// \addtogroup future-util
-template <typename... T> struct is_future<future<T...>> : std::true_type {};
+template <typename... T> struct is_future<future<T...>> : std::true_type {
+};
 
-struct ready_future_marker {};
-struct ready_future_from_tuple_marker {};
-struct exception_future_marker {};
+struct ready_future_marker { };
+struct ready_future_from_tuple_marker { };
+struct exception_future_marker { };
 
 /// \endcond
-
 
 /// \brief Converts a type to a future type, if it isn't already.
 ///
 /// \return Result in member type 'type'.
-template <typename T>
-struct futurize;
+template <typename T> struct futurize;
 
-template <typename T>
-struct futurize {
+template <typename T> struct futurize {
     /// If \c T is a future, \c T; otherwise \c future<T>
     using type = future<T>;
     /// The promise type associated with \c type.
@@ -622,13 +621,12 @@ struct futurize {
 
     /// Apply a function to an argument list (expressed as a tuple)
     /// and return the result, as a future (if it wasn't already).
-    template<typename Func, typename... FuncArgs>
+    template <typename Func, typename... FuncArgs>
     static inline type apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept;
 
     /// Apply a function to an argument list
     /// and return the result, as a future (if it wasn't already).
-    template<typename Func, typename... FuncArgs>
-    static inline type apply(Func&& func, FuncArgs&&... args) noexcept;
+    template <typename Func, typename... FuncArgs> static inline type apply(Func&& func, FuncArgs&&... args) noexcept;
 
     /// Convert a value or a future to a future
     static inline type convert(T&& value) { return make_ready_future<T>(std::move(value)); }
@@ -640,52 +638,44 @@ struct futurize {
     static type from_tuple(const value_type& value);
 
     /// Makes an exceptional future of type \ref type.
-    template <typename Arg>
-    static type make_exception_future(Arg&& arg);
+    template <typename Arg> static type make_exception_future(Arg&& arg);
 };
 
 /// \cond internal
-template <>
-struct futurize<void> {
+template <> struct futurize<void> {
     using type = future<>;
     using promise_type = promise<>;
     using value_type = std::tuple<>;
 
-    template<typename Func, typename... FuncArgs>
+    template <typename Func, typename... FuncArgs>
     static inline type apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept;
 
-    template<typename Func, typename... FuncArgs>
-    static inline type apply(Func&& func, FuncArgs&&... args) noexcept;
+    template <typename Func, typename... FuncArgs> static inline type apply(Func&& func, FuncArgs&&... args) noexcept;
 
     static inline type from_tuple(value_type&& value);
     static inline type from_tuple(const value_type& value);
 
-    template <typename Arg>
-    static type make_exception_future(Arg&& arg);
+    template <typename Arg> static type make_exception_future(Arg&& arg);
 };
 
-template <typename... Args>
-struct futurize<future<Args...>> {
+template <typename... Args> struct futurize<future<Args...>> {
     using type = future<Args...>;
     using promise_type = promise<Args...>;
 
-    template<typename Func, typename... FuncArgs>
+    template <typename Func, typename... FuncArgs>
     static inline type apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept;
 
-    template<typename Func, typename... FuncArgs>
-    static inline type apply(Func&& func, FuncArgs&&... args) noexcept;
+    template <typename Func, typename... FuncArgs> static inline type apply(Func&& func, FuncArgs&&... args) noexcept;
 
     static inline type convert(Args&&... values) { return make_ready_future<Args...>(std::move(values)...); }
     static inline type convert(type&& value) { return std::move(value); }
 
-    template <typename Arg>
-    static type make_exception_future(Arg&& arg);
+    template <typename Arg> static type make_exception_future(Arg&& arg);
 };
 /// \endcond
 
 // Converts a type to a future type, if it isn't already.
-template <typename T>
-using futurize_t = typename futurize<T>::type;
+template <typename T> using futurize_t = typename futurize<T>::type;
 
 /// @}
 
@@ -731,36 +721,42 @@ concept bool ApplyReturnsAnyFuture = requires (Func f, T... args) {
 /// methods in \c future allow querying the state and, most importantly,
 /// scheduling a \c continuation to be executed when the future becomes
 /// available.  Only one such continuation may be scheduled.
-template <typename... T>
-class future {
+template <typename... T> class future {
     promise<T...>* _promise;
-    future_state<T...> _local_state;  // valid if !_promise
+    future_state<T...> _local_state; // valid if !_promise
     static constexpr bool copy_noexcept = future_state<T...>::copy_noexcept;
+
 private:
-    future(promise<T...>* pr) noexcept : _promise(pr) {
+    future(promise<T...>* pr) noexcept
+        : _promise(pr)
+    {
         _promise->_future = this;
     }
     template <typename... A>
-    future(ready_future_marker, A&&... a) : _promise(nullptr) {
+    future(ready_future_marker, A&&... a)
+        : _promise(nullptr)
+    {
         _local_state.set(std::forward<A>(a)...);
     }
     template <typename... A>
-    future(ready_future_from_tuple_marker, std::tuple<A...>&& data) : _promise(nullptr) {
+    future(ready_future_from_tuple_marker, std::tuple<A...>&& data)
+        : _promise(nullptr)
+    {
         _local_state.set(std::move(data));
     }
-    future(exception_future_marker, std::exception_ptr ex) noexcept : _promise(nullptr) {
+    future(exception_future_marker, std::exception_ptr ex) noexcept
+        : _promise(nullptr)
+    {
         _local_state.set_exception(std::move(ex));
     }
-    [[gnu::always_inline]]
-    explicit future(future_state<T...>&& state) noexcept
-            : _promise(nullptr), _local_state(std::move(state)) {
+    [[gnu::always_inline]] explicit future(future_state<T...>&& state) noexcept
+        : _promise(nullptr)
+        , _local_state(std::move(state))
+    {
     }
-    [[gnu::always_inline]]
-    future_state<T...>* state() noexcept {
-        return _promise ? _promise->_state : &_local_state;
-    }
-    template <typename Func>
-    void schedule(Func&& func) {
+    [[gnu::always_inline]] future_state<T...>* state() noexcept { return _promise ? _promise->_state : &_local_state; }
+    template <typename Func> void schedule(Func&& func)
+    {
         if (state()->available()) {
             miniss::schedule(std::make_unique<continuation<Func, T...>>(std::move(func), std::move(*state())));
         } else {
@@ -771,8 +767,8 @@ private:
         }
     }
 
-    [[gnu::always_inline]]
-    future_state<T...> get_available_state() noexcept {
+    [[gnu::always_inline]] future_state<T...> get_available_state() noexcept
+    {
         auto st = state();
         if (_promise) {
             _promise->_future = nullptr;
@@ -781,8 +777,8 @@ private:
         return std::move(*st);
     }
 
-    [[gnu::noinline]]
-    future<T...> rethrow_with_nested() {
+    [[gnu::noinline]] future<T...> rethrow_with_nested()
+    {
         if (!failed()) {
             return make_exception_future<T...>(std::current_exception());
         } else {
@@ -803,16 +799,17 @@ private:
         assert(0 && "we should not be here");
     }
 
-    template<typename... U>
-    friend class shared_future;
+    template <typename... U> friend class shared_future;
+
 public:
     /// \brief The data type carried by the future.
     using value_type = std::tuple<T...>;
     /// \brief The data type carried by the future.
     using promise_type = promise<T...>;
     /// \brief Moves the future into a new object.
-    [[gnu::always_inline]]
-    future(future&& x) noexcept : _promise(x._promise) {
+    [[gnu::always_inline]] future(future&& x) noexcept
+        : _promise(x._promise)
+    {
         if (!_promise) {
             _local_state = std::move(x._local_state);
         }
@@ -822,7 +819,8 @@ public:
         }
     }
     future(const future&) = delete;
-    future& operator=(future&& x) noexcept {
+    future& operator=(future&& x) noexcept
+    {
         if (this != &x) {
             this->~future();
             new (this) future(std::move(x));
@@ -830,8 +828,8 @@ public:
         return *this;
     }
     void operator=(const future&) = delete;
-    __attribute__((always_inline))
-    ~future() {
+    __attribute__((always_inline)) ~future()
+    {
         if (_promise) {
             _promise->_future = nullptr;
         }
@@ -848,18 +846,15 @@ public:
     /// If get() is called in a \ref seastar::thread context,
     /// then it need not be available; instead, the thread will
     /// be paused until the future becomes available.
-    [[gnu::always_inline]]
-    std::tuple<T...> get() {
+    [[gnu::always_inline]] std::tuple<T...> get()
+    {
         if (!state()->available()) {
             wait();
         }
         return get_available_state().get();
     }
 
-    [[gnu::always_inline]]
-     std::exception_ptr get_exception() {
-        return get_available_state().get_exception();
-    }
+    [[gnu::always_inline]] std::exception_ptr get_exception() { return get_available_state().get_exception(); }
 
     /// Gets the value returned by the computation.
     ///
@@ -869,33 +864,24 @@ public:
     /// one type parameter.
     ///
     /// Equivalent to: \c std::get<0>(f.get()).
-    typename future_state<T...>::get0_return_type get0() {
-        return future_state<T...>::get0(get());
-    }
+    typename future_state<T...>::get0_return_type get0() { return future_state<T...>::get0(get()); }
 
     /// \cond internal
-    void wait() {
-        schedule([this] (future_state<T...>&& new_state) {
-            *state() = std::move(new_state);
-        });
+    void wait()
+    {
+        schedule([this](future_state<T...>&& new_state) { *state() = std::move(new_state); });
     }
     /// \endcond
 
     /// \brief Checks whether the future is available.
     ///
     /// \return \c true if the future has a value, or has failed.
-    [[gnu::always_inline]]
-    bool available() noexcept {
-        return state()->available();
-    }
+    [[gnu::always_inline]] bool available() noexcept { return state()->available(); }
 
     /// \brief Checks whether the future has failed.
     ///
     /// \return \c true if the future is availble and has failed.
-    [[gnu::always_inline]]
-    bool failed() noexcept {
-        return state()->failed();
-    }
+    [[gnu::always_inline]] bool failed() noexcept { return state()->failed(); }
 
     /// \brief Schedule a block of code to run when the future is ready.
     ///
@@ -913,10 +899,10 @@ public:
     /// \return a \c future representing the return value of \c func, applied
     ///         to the eventual value of this future.
     template <typename Func, typename Result = futurize_t<std::result_of_t<Func(T&&...)>>>
-    GCC6_CONCEPT( requires seastar::CanApply<Func, T...> )
-    Result
-    then(Func&& func) noexcept {
-        using futurator = futurize<std::result_of_t<Func(T&&...)>>;
+    GCC6_CONCEPT(requires seastar::CanApply<Func, T...>)
+    Result then(Func&& func) noexcept
+    {
+        using futurator = futurize<std::result_of_t<Func(T && ...)>>;
         if (available() && !need_preempt()) {
             if (failed()) {
                 return futurator::make_exception_future(get_available_state().get_exception());
@@ -927,7 +913,7 @@ public:
         typename futurator::promise_type pr;
         auto fut = pr.get_future();
         try {
-            schedule([pr = std::move(pr), func = std::forward<Func>(func)] (auto&& state) mutable {
+            schedule([pr = std::move(pr), func = std::forward<Func>(func)](auto&& state) mutable {
                 if (state.failed()) {
                     pr.set_exception(std::move(state).get_exception());
                 } else {
@@ -942,7 +928,6 @@ public:
         }
         return fut;
     }
-
 
     /// \brief Schedule a block of code to run when the future is ready, allowing
     ///        for exception handling.
@@ -960,9 +945,9 @@ public:
     /// \return a \c future representing the return value of \c func, applied
     ///         to the eventual value of this future.
     template <typename Func, typename Result = futurize_t<std::result_of_t<Func(future)>>>
-    GCC6_CONCEPT( requires seastar::CanApply<Func, future> )
-    Result
-    then_wrapped(Func&& func) noexcept {
+    GCC6_CONCEPT(requires seastar::CanApply<Func, future>)
+    Result then_wrapped(Func&& func) noexcept
+    {
         using futurator = futurize<std::result_of_t<Func(future)>>;
         if (available() && !need_preempt()) {
             return futurator::apply(std::forward<Func>(func), future(get_available_state()));
@@ -970,7 +955,7 @@ public:
         typename futurator::promise_type pr;
         auto fut = pr.get_future();
         try {
-            schedule([pr = std::move(pr), func = std::forward<Func>(func)] (auto&& state) mutable {
+            schedule([pr = std::move(pr), func = std::forward<Func>(func)](auto&& state) mutable {
                 futurator::apply(std::forward<Func>(func), future(std::move(state))).forward_to(std::move(pr));
             });
         } catch (...) {
@@ -992,7 +977,8 @@ public:
     ///
     /// \param pr a promise that will be fulfilled with the results of this
     /// future.
-    void forward_to(promise<T...>&& pr) noexcept {
+    void forward_to(promise<T...>&& pr) noexcept
+    {
         if (state()->available()) {
             state()->forward_to(pr);
         } else {
@@ -1001,8 +987,6 @@ public:
             _promise = nullptr;
         }
     }
-
-
 
     /**
      * Finally continuation for statements that require waiting for the result.
@@ -1019,24 +1003,23 @@ public:
      * with the callback exception on top and the original future exception
      * nested will be propagated.
      */
-    template <typename Func>
-    GCC6_CONCEPT( requires seastar::CanApply<Func> )
-    future<T...> finally(Func&& func) noexcept {
+    template <typename Func> GCC6_CONCEPT(requires seastar::CanApply<Func>) future<T...> finally(Func&& func) noexcept
+    {
         return then_wrapped(finally_body<Func, is_future<std::result_of_t<Func()>>::value>(std::forward<Func>(func)));
     }
 
+    template <typename Func, bool FuncReturnsFuture> struct finally_body;
 
-    template <typename Func, bool FuncReturnsFuture>
-    struct finally_body;
-
-    template <typename Func>
-    struct finally_body<Func, true> {
+    template <typename Func> struct finally_body<Func, true> {
         Func _func;
 
-        finally_body(Func&& func) : _func(std::forward<Func>(func))
-        { }
+        finally_body(Func&& func)
+            : _func(std::forward<Func>(func))
+        {
+        }
 
-        future<T...> operator()(future<T...>&& result) {
+        future<T...> operator()(future<T...>&& result)
+        {
             using futurator = futurize<std::result_of_t<Func()>>;
             return futurator::apply(_func).then_wrapped([result = std::move(result)](auto f_res) mutable {
                 if (!f_res.failed()) {
@@ -1053,14 +1036,16 @@ public:
         }
     };
 
-    template <typename Func>
-    struct finally_body<Func, false> {
+    template <typename Func> struct finally_body<Func, false> {
         Func _func;
 
-        finally_body(Func&& func) : _func(std::forward<Func>(func))
-        { }
+        finally_body(Func&& func)
+            : _func(std::forward<Func>(func))
+        {
+        }
 
-        future<T...> operator()(future<T...>&& result) {
+        future<T...> operator()(future<T...>&& result)
+        {
             try {
                 _func();
                 return std::move(result);
@@ -1074,8 +1059,9 @@ public:
     ///
     /// Terminates the entire program is this future resolves
     /// to an exception.  Use with caution.
-    future<> or_terminate() noexcept {
-        return then_wrapped([] (auto&& f) {
+    future<> or_terminate() noexcept
+    {
+        return then_wrapped([](auto&& f) {
             try {
                 f.get();
             } catch (...) {
@@ -1088,8 +1074,9 @@ public:
     ///
     /// Converts the future into a no-value \c future<>, by
     /// ignoring any result.  Exceptions are propagated unchanged.
-    future<> discard_result() noexcept {
-        return then([] (T&&...) {});
+    future<> discard_result() noexcept
+    {
+        return then([](T&&...) {});
     }
 
     /// \brief Handle the exception carried by this future.
@@ -1111,10 +1098,10 @@ public:
                     || (sizeof...(T) == 0 && seastar::ApplyReturns<Func, void, std::exception_ptr>)
                     || (sizeof...(T) == 1 && seastar::ApplyReturns<Func, T..., std::exception_ptr>)
     ) */
-    future<T...> handle_exception(Func&& func) noexcept {
+    future<T...> handle_exception(Func&& func) noexcept
+    {
         using func_ret = std::result_of_t<Func(std::exception_ptr)>;
-        return then_wrapped([func = std::forward<Func>(func)]
-                             (auto&& fut) -> future<T...> {
+        return then_wrapped([func = std::forward<Func>(func)](auto&& fut) -> future<T...> {
             if (!fut.failed()) {
                 return make_ready_future<T...>(fut.get());
             } else {
@@ -1133,17 +1120,16 @@ public:
     /// and is even allowed to return (or throw) its own exception.
     /// If exception, that future holds, does not match func parameter type
     /// it is propagated as is.
-    template <typename Func>
-    future<T...> handle_exception_type(Func&& func) noexcept {
+    template <typename Func> future<T...> handle_exception_type(Func&& func) noexcept
+    {
         using trait = function_traits<Func>;
         static_assert(trait::arity == 1, "func can take only one parameter");
         using ex_type = typename trait::template arg<0>::type;
         using func_ret = typename trait::return_type;
-        return then_wrapped([func = std::forward<Func>(func)]
-                             (auto&& fut) -> future<T...> {
+        return then_wrapped([func = std::forward<Func>(func)](auto&& fut) -> future<T...> {
             try {
                 return make_ready_future<T...>(fut.get());
-            } catch(ex_type& ex) {
+            } catch (ex_type& ex) {
                 return futurize<func_ret>::apply(func, ex);
             }
         });
@@ -1154,24 +1140,18 @@ public:
     /// Ignore any result (value or exception) hold by this future.
     /// Use with caution since usually ignoring exception is not what
     /// you want
-    void ignore_ready_future() noexcept {
-        state()->ignore();
-    }
+    void ignore_ready_future() noexcept { state()->ignore(); }
 
     /// \cond internal
-    template <typename... U>
-    friend class promise;
-    template <typename... U, typename... A>
-    friend future<U...> make_ready_future(A&&... value);
-    template <typename... U>
-    friend future<U...> make_exception_future(std::exception_ptr ex) noexcept;
-    template <typename... U, typename Exception>
-    friend future<U...> make_exception_future(Exception&& ex) noexcept;
+    template <typename... U> friend class promise;
+    template <typename... U, typename... A> friend future<U...> make_ready_future(A&&... value);
+    template <typename... U> friend future<U...> make_exception_future(std::exception_ptr ex) noexcept;
+    template <typename... U, typename Exception> friend future<U...> make_exception_future(Exception&& ex) noexcept;
     /// \endcond
 };
 
-inline
-void future_state<>::forward_to(promise<>& pr) noexcept {
+inline void future_state<>::forward_to(promise<>& pr) noexcept
+{
     assert(_u.st != state::future && _u.st != state::invalid);
     if (_u.st >= state::exception_min) {
         pr.set_urgent_exception(std::move(_u.ex));
@@ -1182,18 +1162,16 @@ void future_state<>::forward_to(promise<>& pr) noexcept {
     _u.st = state::invalid;
 }
 
-template <typename... T>
-inline
-future<T...>
-promise<T...>::get_future() noexcept {
+template <typename... T> inline future<T...> promise<T...>::get_future() noexcept
+{
     assert(!_future && _state && !_task);
     return future<T...>(this);
 }
 
 template <typename... T>
-template<typename promise<T...>::urgent Urgent>
-inline
-void promise<T...>::make_ready() noexcept {
+template <typename promise<T...>::urgent Urgent>
+inline void promise<T...>::make_ready() noexcept
+{
     if (_task) {
         _state = nullptr;
         if (Urgent == urgent::yes && !need_preempt()) {
@@ -1204,17 +1182,15 @@ void promise<T...>::make_ready() noexcept {
     }
 }
 
-template <typename... T>
-inline
-void promise<T...>::migrated() noexcept {
+template <typename... T> inline void promise<T...>::migrated() noexcept
+{
     if (_future) {
         _future->_promise = this;
     }
 }
 
-template <typename... T>
-inline
-void promise<T...>::abandoned() noexcept {
+template <typename... T> inline void promise<T...>::abandoned() noexcept
+{
     if (_future) {
         assert(_state);
         assert(_state->available() || !_task);
@@ -1225,15 +1201,13 @@ void promise<T...>::abandoned() noexcept {
     }
 }
 
-template <typename... T, typename... A>
-inline
-future<T...> make_ready_future(A&&... value) {
+template <typename... T, typename... A> inline future<T...> make_ready_future(A&&... value)
+{
     return future<T...>(ready_future_marker(), std::forward<A>(value)...);
 }
 
-template <typename... T>
-inline
-future<T...> make_exception_future(std::exception_ptr ex) noexcept {
+template <typename... T> inline future<T...> make_exception_future(std::exception_ptr ex) noexcept
+{
     return future<T...>(exception_future_marker(), std::move(ex));
 }
 
@@ -1243,9 +1217,8 @@ future<T...> make_exception_future(std::exception_ptr ex) noexcept {
 /// state.  This no I/O needs to be performed to perform a computation
 /// (for example, because the connection is closed and we cannot read
 /// from it).
-template <typename... T, typename Exception>
-inline
-future<T...> make_exception_future(Exception&& ex) noexcept {
+template <typename... T, typename Exception> inline future<T...> make_exception_future(Exception&& ex) noexcept
+{
     return make_exception_future<T...>(std::make_exception_ptr(std::forward<Exception>(ex)));
 }
 
@@ -1253,9 +1226,10 @@ future<T...> make_exception_future(Exception&& ex) noexcept {
 
 /// \cond internal
 
-template<typename T>
-template<typename Func, typename... FuncArgs>
-typename futurize<T>::type futurize<T>::apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+template <typename T>
+template <typename Func, typename... FuncArgs>
+typename futurize<T>::type futurize<T>::apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept
+{
     try {
         return convert(::apply(std::forward<Func>(func), std::move(args)));
     } catch (...) {
@@ -1263,9 +1237,10 @@ typename futurize<T>::type futurize<T>::apply(Func&& func, std::tuple<FuncArgs..
     }
 }
 
-template<typename T>
-template<typename Func, typename... FuncArgs>
-typename futurize<T>::type futurize<T>::apply(Func&& func, FuncArgs&&... args) noexcept {
+template <typename T>
+template <typename Func, typename... FuncArgs>
+typename futurize<T>::type futurize<T>::apply(Func&& func, FuncArgs&&... args) noexcept
+{
     try {
         return convert(func(std::forward<FuncArgs>(args)...));
     } catch (...) {
@@ -1273,10 +1248,10 @@ typename futurize<T>::type futurize<T>::apply(Func&& func, FuncArgs&&... args) n
     }
 }
 
-template<typename Func, typename... FuncArgs>
-inline
-std::enable_if_t<!is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>>
-do_void_futurize_apply(Func&& func, FuncArgs&&... args) noexcept {
+template <typename Func, typename... FuncArgs>
+inline std::enable_if_t<!is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>> do_void_futurize_apply(
+    Func&& func, FuncArgs&&... args) noexcept
+{
     try {
         func(std::forward<FuncArgs>(args)...);
         return make_ready_future<>();
@@ -1285,10 +1260,10 @@ do_void_futurize_apply(Func&& func, FuncArgs&&... args) noexcept {
     }
 }
 
-template<typename Func, typename... FuncArgs>
-inline
-std::enable_if_t<is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>>
-do_void_futurize_apply(Func&& func, FuncArgs&&... args) noexcept {
+template <typename Func, typename... FuncArgs>
+inline std::enable_if_t<is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>> do_void_futurize_apply(
+    Func&& func, FuncArgs&&... args) noexcept
+{
     try {
         return func(std::forward<FuncArgs>(args)...);
     } catch (...) {
@@ -1296,10 +1271,10 @@ do_void_futurize_apply(Func&& func, FuncArgs&&... args) noexcept {
     }
 }
 
-template<typename Func, typename... FuncArgs>
-inline
-std::enable_if_t<!is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>>
-do_void_futurize_apply_tuple(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+template <typename Func, typename... FuncArgs>
+inline std::enable_if_t<!is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>>
+do_void_futurize_apply_tuple(Func&& func, std::tuple<FuncArgs...>&& args) noexcept
+{
     try {
         ::apply(std::forward<Func>(func), std::move(args));
         return make_ready_future<>();
@@ -1308,10 +1283,10 @@ do_void_futurize_apply_tuple(Func&& func, std::tuple<FuncArgs...>&& args) noexce
     }
 }
 
-template<typename Func, typename... FuncArgs>
-inline
-std::enable_if_t<is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>>
-do_void_futurize_apply_tuple(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+template <typename Func, typename... FuncArgs>
+inline std::enable_if_t<is_future<std::result_of_t<Func(FuncArgs&&...)>>::value, future<>> do_void_futurize_apply_tuple(
+    Func&& func, std::tuple<FuncArgs...>&& args) noexcept
+{
     try {
         return ::apply(std::forward<Func>(func), std::move(args));
     } catch (...) {
@@ -1319,19 +1294,23 @@ do_void_futurize_apply_tuple(Func&& func, std::tuple<FuncArgs...>&& args) noexce
     }
 }
 
-template<typename Func, typename... FuncArgs>
-typename futurize<void>::type futurize<void>::apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+template <typename Func, typename... FuncArgs>
+typename futurize<void>::type futurize<void>::apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept
+{
     return do_void_futurize_apply_tuple(std::forward<Func>(func), std::move(args));
 }
 
-template<typename Func, typename... FuncArgs>
-typename futurize<void>::type futurize<void>::apply(Func&& func, FuncArgs&&... args) noexcept {
+template <typename Func, typename... FuncArgs>
+typename futurize<void>::type futurize<void>::apply(Func&& func, FuncArgs&&... args) noexcept
+{
     return do_void_futurize_apply(std::forward<Func>(func), std::forward<FuncArgs>(args)...);
 }
 
-template<typename... Args>
-template<typename Func, typename... FuncArgs>
-typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(Func&& func, std::tuple<FuncArgs...>&& args) noexcept {
+template <typename... Args>
+template <typename Func, typename... FuncArgs>
+typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(
+    Func&& func, std::tuple<FuncArgs...>&& args) noexcept
+{
     try {
         return ::apply(std::forward<Func>(func), std::move(args));
     } catch (...) {
@@ -1339,9 +1318,10 @@ typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(Func&&
     }
 }
 
-template<typename... Args>
-template<typename Func, typename... FuncArgs>
-typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(Func&& func, FuncArgs&&... args) noexcept {
+template <typename... Args>
+template <typename Func, typename... FuncArgs>
+typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(Func&& func, FuncArgs&&... args) noexcept
+{
     try {
         return func(std::forward<FuncArgs>(args)...);
     } catch (...) {
@@ -1349,58 +1329,40 @@ typename futurize<future<Args...>>::type futurize<future<Args...>>::apply(Func&&
     }
 }
 
-template <typename T>
-template <typename Arg>
-inline
-future<T>
-futurize<T>::make_exception_future(Arg&& arg) {
+template <typename T> template <typename Arg> inline future<T> futurize<T>::make_exception_future(Arg&& arg)
+{
     return ::make_exception_future<T>(std::forward<Arg>(arg));
 }
 
 template <typename... T>
 template <typename Arg>
-inline
-future<T...>
-futurize<future<T...>>::make_exception_future(Arg&& arg) {
+inline future<T...> futurize<future<T...>>::make_exception_future(Arg&& arg)
+{
     return ::make_exception_future<T...>(std::forward<Arg>(arg));
 }
 
-template <typename Arg>
-inline
-future<>
-futurize<void>::make_exception_future(Arg&& arg) {
+template <typename Arg> inline future<> futurize<void>::make_exception_future(Arg&& arg)
+{
     return ::make_exception_future<>(std::forward<Arg>(arg));
 }
 
-template <typename T>
-inline
-future<T>
-futurize<T>::from_tuple(std::tuple<T>&& value) {
+template <typename T> inline future<T> futurize<T>::from_tuple(std::tuple<T>&& value)
+{
     return make_ready_future<T>(std::move(value));
 }
 
-template <typename T>
-inline
-future<T>
-futurize<T>::from_tuple(const std::tuple<T>& value) {
+template <typename T> inline future<T> futurize<T>::from_tuple(const std::tuple<T>& value)
+{
     return make_ready_future<T>(value);
 }
 
-inline
-future<>
-futurize<void>::from_tuple(std::tuple<>&& value) {
-    return make_ready_future<>();
-}
+inline future<> futurize<void>::from_tuple(std::tuple<>&& value) { return make_ready_future<>(); }
 
-inline
-future<>
-futurize<void>::from_tuple(const std::tuple<>& value) {
-    return make_ready_future<>();
-}
+inline future<> futurize<void>::from_tuple(const std::tuple<>& value) { return make_ready_future<>(); }
 
-template<typename Func, typename... Args>
-auto futurize_apply(Func&& func, Args&&... args) {
-    using futurator = futurize<std::result_of_t<Func(Args&&...)>>;
+template <typename Func, typename... Args> auto futurize_apply(Func&& func, Args&&... args)
+{
+    using futurator = futurize<std::result_of_t<Func(Args && ...)>>;
     return futurator::apply(std::forward<Func>(func), std::forward<Args>(args)...);
 }
 

@@ -1,9 +1,9 @@
 #pragma once
 
+#include "miniss/future.h"
+#include <boost/noncopyable.hpp>
 #include <cstddef>
 #include <deque>
-#include <boost/noncopyable.hpp>
-#include "miniss/future.h"
 
 namespace miniss {
 

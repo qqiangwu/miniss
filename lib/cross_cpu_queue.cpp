@@ -7,18 +7,14 @@ bool Cross_cpu_queue::poll_tx()
 {
     assert(this_cpu() == &to_);
 
-    return tx_.process([this](Work_item* item){
-        item->process().then([this, item]{
-            respond_(item);
-        });
-    }) > 0;
+    return tx_.process([this](Work_item* item) { item->process().then([this, item] { respond_(item); }); }) > 0;
 }
 
 bool Cross_cpu_queue::poll_rx()
 {
     assert(this_cpu() == &from_);
 
-    return rx_.process([](Work_item* item){
+    return rx_.process([](Work_item* item) {
         std::unique_ptr<Work_item> p(item);
         item->complete();
     }) > 0;

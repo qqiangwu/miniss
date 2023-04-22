@@ -1,22 +1,20 @@
+#include "miniss/io/file.h"
+#include "miniss/cpu.h"
+#include "miniss/io/file_io.h"
 #include <cerrno>
 #include <cstring>
 #include <spdlog/spdlog.h>
-#include "miniss/cpu.h"
-#include "miniss/io/file.h"
-#include "miniss/io/file_io.h"
 
 using namespace miniss;
 
 File::~File()
 {
-    if (fd_ == -1)
-    {
+    if (fd_ == -1) {
         return;
     }
 
-    close().handle_exception([](std::exception_ptr e){
-        spdlog::error("close file failed: {}", std::strerror(errno));
-    });
+    close().handle_exception(
+        [](std::exception_ptr e) { spdlog::error("close file failed: {}", std::strerror(errno)); });
 }
 
 future<struct stat> File::stat() const
@@ -24,7 +22,7 @@ future<struct stat> File::stat() const
     assert(fd_ != -1);
     assert(cpu_);
 
-    return cpu_->submit_syscall([fd = fd_]{
+    return cpu_->submit_syscall([fd = fd_] {
         struct stat st;
         auto ret = ::fstat(fd, &st);
         return wrap_syscall(ret, st);
@@ -61,9 +59,7 @@ future<> File::flush()
     assert(fd_ != -1);
     assert(cpu_);
 
-    return cpu_->submit_syscall([fd = fd_]{
-        return ::fdatasync(fd);
-    });
+    return cpu_->submit_syscall([fd = fd_] { return ::fdatasync(fd); });
 }
 
 future<> File::close()
@@ -74,7 +70,5 @@ future<> File::close()
 
     auto fd = std::exchange(fd_, -1);
 
-    return cpu_->submit_syscall([fd](){
-        return ::close(fd);
-    });
+    return cpu_->submit_syscall([fd]() { return ::close(fd); });
 }

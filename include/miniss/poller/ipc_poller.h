@@ -1,14 +1,17 @@
 #pragma once
 
+#include "miniss/poller.h"
 #include <functional>
 #include <map>
-#include "miniss/poller.h"
 
 namespace miniss {
 
-class Ipc_poller: public Poller {
+class Ipc_poller : public Poller {
 public:
-    explicit Ipc_poller(unsigned cpu_id) : cpu_id_(cpu_id) {}
+    explicit Ipc_poller(unsigned cpu_id)
+        : cpu_id_(cpu_id)
+    {
+    }
 
     bool poll() override;
     bool pure_poll() override;

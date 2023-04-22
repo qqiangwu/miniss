@@ -1,22 +1,19 @@
 #pragma once
 
+#include "miniss/future.h"
+#include <boost/lockfree/spsc_queue.hpp>
 #include <deque>
 #include <variant>
-#include <boost/lockfree/spsc_queue.hpp>
-#include "miniss/future.h"
 
 namespace miniss {
 
-struct Work_item
-{
+struct Work_item {
     virtual ~Work_item() = default;
     virtual future<> process() = 0;
     virtual void complete() = 0;
 };
 
-template <class Fn>
-struct Work_item_impl final : public Work_item
-{
+template <class Fn> struct Work_item_impl final : public Work_item {
     using futurator = futurize<std::result_of_t<Fn()>>;
     using future_type = typename futurator::type;
     using value_type = typename future_type::value_type;
@@ -26,12 +23,14 @@ struct Work_item_impl final : public Work_item
     std::variant<std::monostate, value_type, std::exception_ptr> ret_;
     promise_type promise_;
 
-    explicit Work_item_impl(Fn&& fn): fn_(std::move(fn))
-    {}
+    explicit Work_item_impl(Fn&& fn)
+        : fn_(std::move(fn))
+    {
+    }
 
     future<> process() override
     {
-        return futurator::apply(fn_).then_wrapped([this](auto&& r){
+        return futurator::apply(fn_).then_wrapped([this](auto&& r) {
             try {
                 ret_.template emplace<value_type>(std::move(r.get()));
             } catch (...) {
@@ -65,8 +64,7 @@ struct Unbounded_spsc_queue {
     bool push(Work_item* item);
     bool flush();
 
-    template <class Fn>
-    size_t process(Fn&& fn)
+    template <class Fn> size_t process(Fn&& fn)
     {
         Work_item* buf[8];
 

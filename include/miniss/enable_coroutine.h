@@ -1,80 +1,46 @@
 #pragma once
 
-#include <coroutine>
-#include <boost/noncopyable.hpp>
 #include "miniss/future.h"
+#include <boost/noncopyable.hpp>
+#include <coroutine>
 
 namespace miniss::detail {
 
-template <class... T>
-struct coroutine_traits_base {
+template <class... T> struct coroutine_traits_base {
     class promise_type : private boost::noncopyable {
         promise<T...> pr_;
 
     public:
-        future<T...> get_return_object() noexcept
-        {
-            return pr_.get_future();
-        }
+        future<T...> get_return_object() noexcept { return pr_.get_future(); }
 
-        template <class... U>
-        void return_value(U&&... args) noexcept
-        {
-            pr_.set_value(std::forward<U>(args)...);
-        }
+        template <class... U> void return_value(U&&... args) noexcept { pr_.set_value(std::forward<U>(args)...); }
 
-        void unhandled_exception() noexcept
-        {
-            pr_.set_exception(std::current_exception());
-        }
+        void unhandled_exception() noexcept { pr_.set_exception(std::current_exception()); }
 
-        auto initial_suspend() const noexcept
-        {
-            return std::suspend_never{};
-        }
+        auto initial_suspend() const noexcept { return std::suspend_never {}; }
 
-        auto final_suspend() const noexcept
-        {
-            return std::suspend_never{};
-        }
+        auto final_suspend() const noexcept { return std::suspend_never {}; }
     };
 };
 
-template <>
-struct coroutine_traits_base<> {
+template <> struct coroutine_traits_base<> {
     class promise_type : private boost::noncopyable {
         promise<> pr_;
 
     public:
-        future<> get_return_object() noexcept
-        {
-            return pr_.get_future();
-        }
+        future<> get_return_object() noexcept { return pr_.get_future(); }
 
-        void return_void() noexcept
-        {
-            pr_.set_value();
-        }
+        void return_void() noexcept { pr_.set_value(); }
 
-        void unhandled_exception() noexcept
-        {
-            pr_.set_exception(std::current_exception());
-        }
+        void unhandled_exception() noexcept { pr_.set_exception(std::current_exception()); }
 
-        auto initial_suspend() const noexcept
-        {
-            return std::suspend_never{};
-        }
+        auto initial_suspend() const noexcept { return std::suspend_never {}; }
 
-        auto final_suspend() const noexcept
-        {
-            return std::suspend_never{};
-        }
+        auto final_suspend() const noexcept { return std::suspend_never {}; }
     };
 };
 
-template <class... T>
-class future_awaiter : private boost::noncopyable {
+template <class... T> class future_awaiter : private boost::noncopyable {
     future<T...> fut_;
 
 public:
@@ -83,14 +49,11 @@ public:
     {
     }
 
-    bool await_ready() noexcept
-    {
-        return fut_.available();
-    }
+    bool await_ready() noexcept { return fut_.available(); }
 
     void await_suspend(std::coroutine_handle<> handle) noexcept
     {
-        fut_.then_wrapped([this, handle](auto&& f){
+        fut_.then_wrapped([this, handle](auto&& f) {
             fut_ = std::move(f);
             handle.resume();
         });
@@ -108,17 +71,15 @@ public:
 
 }
 
-template <class... T>
-auto operator co_await(future<T...> f) noexcept
+template <class... T> auto operator co_await(future<T...> f) noexcept
 {
-    return miniss::detail::future_awaiter<T...>{std::move(f)};
+    return miniss::detail::future_awaiter<T...> { std::move(f) };
 }
 
 namespace std {
 
 template <class... T, class... Args>
-struct coroutine_traits<future<T...>, Args...> : miniss::detail::coroutine_traits_base<T...>
-{
+struct coroutine_traits<future<T...>, Args...> : miniss::detail::coroutine_traits_base<T...> {
 };
 
 }

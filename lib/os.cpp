@@ -1,7 +1,7 @@
+#include "miniss/os.h"
 #include <cassert>
 #include <cstdlib>
 #include <latch>
-#include "miniss/os.h"
 
 using namespace miniss;
 
@@ -17,7 +17,7 @@ void OS::init(const Configuration& conf)
     static std::latch started(conf.cpu_count);
 
     for (size_t i = 1; i < conf.cpu_count; ++i) {
-        threads_.emplace_back([&, i, this]{
+        threads_.emplace_back([&, i, this] {
             start_cpu_(i, conf);
             cpu_constructed.arrive_and_wait();
             queue_constructed.arrive_and_wait();
@@ -36,7 +36,7 @@ void OS::init(const Configuration& conf)
 
         queues_[i] = reinterpret_cast<Cross_cpu_queue*>(operator new[](sizeof(Cross_cpu_queue) * conf.cpu_count));
         for (std::size_t j = 0; j < conf.cpu_count; ++j) {
-            new(&queues_[i][j]) Cross_cpu_queue(*cpus_[i], *cpus_[j]);
+            new (&queues_[i][j]) Cross_cpu_queue(*cpus_[i], *cpus_[j]);
         }
     }
 
@@ -51,10 +51,7 @@ void OS::start_cpu_(int i, const Configuration& conf)
 }
 
 // @todo: fix me later
-void OS::exit(int code)
-{
-    std::_Exit(code);
-}
+void OS::exit(int code) { std::_Exit(code); }
 
 bool OS::poll_queues()
 {

@@ -1,12 +1,12 @@
 #pragma once
 
-#include <vector>
-#include <thread>
-#include <memory>
-#include <type_traits>
 #include "miniss/cpu.h"
 #include "miniss/cross_cpu_queue.h"
 #include "miniss/future.h"
+#include <memory>
+#include <thread>
+#include <type_traits>
+#include <vector>
 
 namespace miniss {
 
@@ -15,8 +15,7 @@ public:
     void init(const Configuration& conf);
     void exit(int code);
 
-    template <class Fn>
-    futurize_t<std::result_of_t<Fn()>> submit_to(unsigned cpu_id, Fn&& fn)
+    template <class Fn> futurize_t<std::result_of_t<Fn()>> submit_to(unsigned cpu_id, Fn&& fn)
     {
         if (this_cpu()->cpu_id() != cpu_id) {
             return queues_[this_cpu()->cpu_id()][cpu_id].submit(std::forward<Fn>(fn));

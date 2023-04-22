@@ -6,11 +6,12 @@ namespace miniss {
 
 class Syscall_runner;
 
-class Syscall_poller: public Poller {
+class Syscall_poller : public Poller {
 public:
     explicit Syscall_poller(Syscall_runner& runner)
         : runner_(runner)
-    {}
+    {
+    }
 
     bool poll() override;
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <chrono>
-#include <stdexcept>
 #include <functional>
+#include <stdexcept>
 
 namespace miniss {
 

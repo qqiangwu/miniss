@@ -1,13 +1,13 @@
+#include "miniss/app.h"
+#include "miniss/cpu.h"
+#include "miniss/future_util.h"
 #include <fcntl.h>
 #include <filesystem>
-#include <fstream>
-#include <string_view>
 #include <fmt/core.h>
-#include <nonstd/scope.hpp>
+#include <fstream>
 #include <gtest/gtest.h>
-#include "miniss/cpu.h"
-#include "miniss/app.h"
-#include "miniss/future_util.h"
+#include <nonstd/scope.hpp>
+#include <string_view>
 
 using namespace miniss;
 using namespace std::chrono_literals;
@@ -38,19 +38,17 @@ int main()
 
     std::vector<int> values(conf.cpu_count);
     App app(conf);
-    app.run([&]{
+    app.run([&] {
         auto cpu = this_cpu();
 
-        auto f1 = cpu->open_file(p1, O_RDONLY).then_wrapped([](auto&& f){
+        auto f1 = cpu->open_file(p1, O_RDONLY).then_wrapped([](auto&& f) {
             fmt::print("open failed\n");
 
             EXPECT_TRUE(f.failed());
             EXPECT_THROW(f.get(), std::system_error);
         });
 
-        auto f2 = cpu->open_file(p2, O_RDONLY).then([](File file){
-            return file.size();
-        }).then([](auto size){
+        auto f2 = cpu->open_file(p2, O_RDONLY).then([](File file) { return file.size(); }).then([](auto size) {
             fmt::print("filesize: {} - {}\n", size, kTestFileSize);
 
             EXPECT_EQ(size, kTestFileSize);
@@ -59,8 +57,6 @@ int main()
         std::vector<future<>> futs;
         futs.push_back(std::move(f1));
         futs.push_back(std::move(f2));
-        return when_all(std::move(futs)).then([](auto&& f){
-            return make_ready_future<int>(0);
-        });
+        return when_all(std::move(futs)).then([](auto&& f) { return make_ready_future<int>(0); });
     });
 }

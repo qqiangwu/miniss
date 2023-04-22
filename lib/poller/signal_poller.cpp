@@ -1,8 +1,8 @@
-#include <signal.h>
-#include <fmt/core.h>
-#include "miniss/util.h"
-#include "miniss/cpu.h"
 #include "miniss/poller/signal_poller.h"
+#include "miniss/cpu.h"
+#include "miniss/util.h"
+#include <fmt/core.h>
+#include <signal.h>
 
 using namespace miniss;
 
@@ -35,15 +35,12 @@ bool Signal_poller::poll()
     return true;
 }
 
-bool Signal_poller::pure_poll()
-{
-    return pending_signals_->load(std::memory_order_relaxed) != 0;
-}
+bool Signal_poller::pure_poll() { return pending_signals_->load(std::memory_order_relaxed) != 0; }
 
 void Signal_poller::register_signal(int signo, Signal_handler&& handler)
 {
     if (signal_handlers_.contains(signo)) {
-        throw std::runtime_error{fmt::format("signal {} already registered", signo)};
+        throw std::runtime_error { fmt::format("signal {} already registered", signo) };
     }
 
     sigset_t set;

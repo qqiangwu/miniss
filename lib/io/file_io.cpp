@@ -1,8 +1,8 @@
-#include <linux/aio_abi.h>
+#include "miniss/io/file_io.h"
 #include <cerrno>
 #include <cstring>
+#include <linux/aio_abi.h>
 #include <spdlog/spdlog.h>
-#include "miniss/io/file_io.h"
 
 using namespace miniss;
 
@@ -31,7 +31,7 @@ future<std::uint64_t> File_io::submit_write(int fd, uint64_t pos, std::span<cons
     io.aio_nbytes = bytes.size();
     io.aio_offset = pos;
 
-    return submit_io_(io).then([](io_event ev){
+    return submit_io_(io).then([](io_event ev) {
         throw_kernel_error(long(ev.res));
         return make_ready_future<std::uint64_t>(std::uint64_t(ev.res));
     });
@@ -48,7 +48,7 @@ future<std::uint64_t> File_io::submit_read(int fd, uint64_t pos, std::span<std::
     io.aio_nbytes = bytes.size();
     io.aio_offset = pos;
 
-    return submit_io_(io).then([](io_event ev){
+    return submit_io_(io).then([](io_event ev) {
         throw_kernel_error(long(ev.res));
         return make_ready_future<std::uint64_t>(std::uint64_t(ev.res));
     });
@@ -59,9 +59,7 @@ future<io_event> File_io::submit_io_(iocb io)
     io.aio_resfd = aio_eventfd_.get_fd();
     io.aio_flags |= IOCB_FLAG_RESFD;
 
-    return aio_available_.wait().then([io, this]() mutable {
-        return submit_io_impl_(&io);
-    });
+    return aio_available_.wait().then([io, this]() mutable { return submit_io_impl_(&io); });
 }
 
 future<io_event> File_io::submit_io_impl_(iocb* io)
@@ -80,7 +78,7 @@ future<io_event> File_io::submit_io_impl_(iocb* io)
 bool File_io::reap_io()
 {
     io_event ev[max_io];
-    struct timespec timeout = {0, 0};
+    struct timespec timeout = { 0, 0 };
     auto n = ::syscall(__NR_io_getevents, aio_ctx_, 1, max_io, ev, &timeout);
     throw_system_error_if(n < 0, "io_getevents failed");
 

@@ -1,22 +1,22 @@
 #pragma once
 
-#include <signal.h>
-#include <pthread.h>
-#include <atomic>
-#include <cassert>
-#include <functional>
-#include <memory>
-#include <vector>
-#include <chrono>
-#include <filesystem>
-#include <boost/noncopyable.hpp>
 #include "miniss/configuration.h"
-#include "miniss/poller.h"
-#include "miniss/task.h"
-#include "miniss/io/syscall.h"
-#include "miniss/io/timer.h"
 #include "miniss/io/file.h"
 #include "miniss/io/file_io.h"
+#include "miniss/io/syscall.h"
+#include "miniss/io/timer.h"
+#include "miniss/poller.h"
+#include "miniss/task.h"
+#include <atomic>
+#include <boost/noncopyable.hpp>
+#include <cassert>
+#include <chrono>
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <pthread.h>
+#include <signal.h>
+#include <vector>
 
 namespace miniss {
 
@@ -35,19 +35,11 @@ public:
     void wakeup();
     void maybe_wakeup();
 
-    template <class Fn>
-    void schedule(Fn&& task)
-    {
-        schedule(make_task(std::forward<Fn>(task)));
-    }
+    template <class Fn> void schedule(Fn&& task) { schedule(make_task(std::forward<Fn>(task))); }
 
-    void schedule(std::unique_ptr<task> t)
-    {
-        task_queue_.push_back(std::move(t));
-    }
+    void schedule(std::unique_ptr<task> t) { task_queue_.push_back(std::move(t)); }
 
-    template <class Fn>
-    void schedule_after(Clock_type::duration interval, Fn&& fn)
+    template <class Fn> void schedule_after(Clock_type::duration interval, Fn&& fn)
     {
         schedule_after(interval, make_task(std::forward<Fn>(fn)));
     }
@@ -55,11 +47,7 @@ public:
     void schedule_after(Clock_type::duration interval, std::unique_ptr<task> t);
 
 public:
-    template <class Fn>
-    auto submit_syscall(Fn&& fn)
-    {
-        return syscall_runner_.submit(std::forward<Fn>(fn));
-    }
+    template <class Fn> auto submit_syscall(Fn&& fn) { return syscall_runner_.submit(std::forward<Fn>(fn)); }
 
 public:
     // file operations

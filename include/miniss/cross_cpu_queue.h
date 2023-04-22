@@ -1,12 +1,12 @@
 #pragma once
 
-#include <cassert>
-#include <deque>
-#include <mutex>
-#include <memory>
-#include <type_traits>
 #include "miniss/future.h"
 #include "miniss/util/unbounded_spsc_queue.h"
+#include <cassert>
+#include <deque>
+#include <memory>
+#include <mutex>
+#include <type_traits>
 
 namespace miniss {
 
@@ -15,7 +15,8 @@ class CPU;
 class Cross_cpu_queue {
 public:
     Cross_cpu_queue(CPU& from, CPU& to)
-        : from_(from), to_(to)
+        : from_(from)
+        , to_(to)
     {
     }
 
@@ -25,8 +26,7 @@ public:
     bool flush_tx();
     bool flush_rx();
 
-    template <class Fn>
-    futurize_t<std::result_of_t<Fn()>> submit(Fn&& fn)
+    template <class Fn> futurize_t<std::result_of_t<Fn()>> submit(Fn&& fn)
     {
         auto task = std::make_unique<Work_item_impl<Fn>>(std::forward<Fn>(fn));
         auto fut = task->promise_.get_future();
